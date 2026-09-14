@@ -5,6 +5,8 @@ const { fetchKeywordDeals, fetchWednesdayBazaarDeals, fetchNoiceDeals } = requir
 const { findAlertWorthyDeals } = require('./dealTracker');
 const { sendBatchAlerts } = require('./notifier');
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const chatId = process.env.TELEGRAM_CHAT_ID;
 const minDiscount = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || config.minDiscount || 50;
@@ -20,6 +22,7 @@ const args = process.argv.slice(2);
 let mode = 'auto';
 let chunkIndex = 0;
 let totalChunks = 1;
+let skipSync = false;
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
@@ -29,31 +32,65 @@ for (let i = 0; i < args.length; i++) {
   } else if (arg === '--total-chunks' && args[i + 1] !== undefined) {
     totalChunks = parseInt(args[i + 1], 10) || 1;
     i++;
+  } else if (arg === '--skip-sync') {
+    skipSync = true;
   } else if (!arg.startsWith('--')) {
     mode = arg.toLowerCase();
+  }
+}
+
+/**
+ * Top-of-hour synchronization:
+ * If the runner woke up early (e.g. at minute 55-59 in IST),
+ * calculate remaining milliseconds to :00:00 sharp and wait.
+ */
+async function syncToHourMark(skip = false) {
+  if (skip) {
+    console.log('[Sync] Top-of-hour synchronization skipped via --skip-sync.');
+    return;
+  }
+
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const istNow = new Date(Date.now() + istOffsetMs);
+  const mins = istNow.getUTCMinutes();
+  const secs = istNow.getUTCSeconds();
+  const ms = istNow.getUTCMilliseconds();
+
+  if (mins >= 55 && mins <= 59) {
+    const minsLeft = 60 - mins;
+    const msToWait = (minsLeft * 60 * 1000) - (secs * 1000) - ms;
+    if (msToWait > 0 && msToWait <= 5 * 60 * 1000) {
+      console.log(`[Sync] Runner woke up early at ${mins}:${String(secs).padStart(2, '0')} IST.`);
+      console.log(`[Sync] Waiting ${(msToWait / 1000).toFixed(1)}s until :00:00 IST sharp for fresh hourly deals...`);
+      await sleep(msToWait);
+      console.log('[Sync] Top of the hour reached (:00:00 IST)! Commencing deal scrape.');
+    }
+  } else {
+    console.log(`[Sync] Running immediately (minute ${mins} is outside pre-hour window 55-59).`);
   }
 }
 
 async function main() {
   console.log(`[CronRunner] Mode: ${mode.toUpperCase()} | Store: ${storeConfig.sid} | Chunk: ${chunkIndex + 1}/${totalChunks}`);
 
+  // Synchronize to :00:00 IST if runner booted early in pre-hour window
+  await syncToHourMark(skipSync);
+
   let bot = null;
   if (token && token !== 'your_bot_token_here') {
-    // Non-polling instance for single-shot execution
     bot = new TelegramBot(token, { polling: false });
   } else {
     console.warn('[CronRunner] No TELEGRAM_BOT_TOKEN configured. Will scrape and cache without sending Telegram alerts.');
   }
 
   const now = new Date();
-  // Check day and hour in IST (UTC + 5:30)
   const istOffset = 5.5 * 60 * 60 * 1000;
   const istDate = new Date(now.getTime() + istOffset);
   const istDay = istDate.getUTCDay(); // 3 = Wednesday
   const istHours = istDate.getUTCHours();
   const istMinutes = istDate.getUTCMinutes();
 
-  console.log(`[CronRunner] Current IST Time: ${istDate.toUTCString()} (Day: ${istDay}, Hour: ${istHours}:${istMinutes})`);
+  console.log(`[CronRunner] Active IST Time: ${istDate.toUTCString()} (Day: ${istDay}, Hour: ${istHours}:${String(istMinutes).padStart(2, '0')})`);
 
   let shouldRunKeywords = false;
   let shouldRunBazaar = false;
@@ -71,8 +108,8 @@ async function main() {
     if (istDay === 3 && istHours === 0) {
       shouldRunBazaar = true;
     }
-    // 2. Keyword Deal Hunter between 10:00 AM and 9:05 PM IST
-    if (istHours >= 10 && (istHours < 21 || (istHours === 21 && istMinutes <= 15))) {
+    // 2. Keyword Deal Hunter between 9:00 AM and 10:00 PM IST
+    if (istHours >= 9 && (istHours < 22 || (istHours === 22 && istMinutes <= 15))) {
       shouldRunKeywords = true;
     }
   }
@@ -84,22 +121,61 @@ async function main() {
   };
 
   if (shouldRunKeywords) {
-    console.log(`\n--- Running Keyword Deal Hunter (Chunk ${chunkIndex + 1}/${totalChunks}) ---`);
-    try {
-      const items = await fetchKeywordDeals(storeConfig, {
-        chunkIndex,
-        totalChunks,
-        categories: keywordHunterConfig.categories,
-        thresholds: keywordThresholds
-      });
-      console.log(`[KeywordHunter] Scraped ${items.length} relevant items across target queries.`);
+    const chunkTag = totalChunks > 1 ? ` (Chunk ${chunkIndex + 1}/${totalChunks})` : '';
+    console.log(`\n--- Running Keyword Deal Hunter${chunkTag} ---`);
+
+    let items = [];
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
+      attempts++;
+      try {
+        console.log(`[KeywordHunter] Attempt ${attempts}/${maxAttempts} - Fetching deals...`);
+        items = await fetchKeywordDeals(storeConfig, {
+          chunkIndex,
+          totalChunks,
+          categories: keywordHunterConfig.categories,
+          thresholds: keywordThresholds
+        });
+
+        if (items && items.length > 0) {
+          console.log(`[KeywordHunter] Attempt ${attempts} succeeded: scraped ${items.length} items across target queries.`);
+          break;
+        } else {
+          console.warn(`[KeywordHunter] Attempt ${attempts} returned 0 items.`);
+          if (attempts < maxAttempts) {
+            console.log(`[KeywordHunter] Waiting 6s before retry ${attempts + 1}...`);
+            await sleep(6000);
+          }
+        }
+      } catch (e) {
+        console.error(`[KeywordHunter] Attempt ${attempts} error:`, e.message);
+        if (attempts < maxAttempts) {
+          console.log(`[KeywordHunter] Waiting 6s before retry ${attempts + 1}...`);
+          await sleep(6000);
+        }
+      }
+    }
+
+    if (items.length > 0) {
       const alerts = findAlertWorthyDeals(items, keywordThresholds, 'keywordHunter');
       console.log(`[KeywordHunter] Found ${alerts.length} alert-worthy deals (Essentials ≥ ${keywordThresholds.essentials}%, Snacks/Treats ≥ ${keywordThresholds.nonEssentials}%).`);
       if (bot && chatId && alerts.length > 0) {
-        await sendBatchAlerts(bot, chatId, alerts, { workerInfo: `Worker ${chunkIndex + 1}/${totalChunks}` });
+        const timeFormatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Kolkata',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+        const timeString = timeFormatter.format(new Date()) + ' IST';
+        const workerInfo = totalChunks > 1 ? `Worker ${chunkIndex + 1}/${totalChunks}` : null;
+        await sendBatchAlerts(bot, chatId, alerts, { timeString, workerInfo });
+      } else if (!alerts.length) {
+        console.log('[KeywordHunter] No items met the minimum discount thresholds this run.');
       }
-    } catch (e) {
-      console.error('[KeywordHunter] Error:', e.message);
+    } else {
+      console.error('[KeywordHunter] All retry attempts failed or returned 0 items.');
     }
   }
 

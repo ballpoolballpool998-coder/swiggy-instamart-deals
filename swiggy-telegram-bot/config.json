@@ -10,8 +10,8 @@
       "name": "Keyword Deal Hunter",
       "type": "search",
       "enabled": true,
-      "cron": "5 10-21 * * *",
-      "description": "Hourly between 10:00 AM and 9:05 PM",
+      "cron": "27 3-16 * * *",
+      "description": "Hourly between 9:00 AM and 10:00 PM IST",
       "thresholds": {
         "essentials": 65,
         "nonEssentials": 75

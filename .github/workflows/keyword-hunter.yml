@@ -2,29 +2,22 @@ name: Swiggy Instamart Keyword Deal Hunter
 
 on:
   schedule:
-    # Runs hourly at minute 5 between 04:00 UTC and 15:05 UTC (09:35 AM to 08:35 PM IST)
-    - cron: '5 4-15 * * *'
+    # Wakes up at minute 27 UTC between 03:27 and 16:27 UTC (08:57 AM to 09:57 PM IST).
+    # The runner boots up early (~35s), then syncs to hit Swiggy precisely at 09:00 AM through 10:00 PM IST (:00:00).
+    - cron: '27 3-16 * * *'
   workflow_dispatch:
     inputs:
-      specific_chunk:
-        description: 'Specific chunk index (0, 1, or 2). Leave empty to run all 3 in parallel.'
+      skip_sync:
+        description: 'Skip top-of-hour wait sync (run immediately)'
+        type: boolean
         required: false
-        default: ''
+        default: true
 
 jobs:
   hunt:
-    name: Worker ${{ matrix.worker }} of 3
+    name: Single Unified Deal Hunter
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - worker: 1
-            chunk: 0
-          - worker: 2
-            chunk: 1
-          - worker: 3
-            chunk: 2
+    timeout-minutes: 10
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -50,9 +43,11 @@ jobs:
           SWIGGY_SECONDARY_STORE_ID: ${{ secrets.SWIGGY_SECONDARY_STORE_ID || '1231805' }}
           SWIGGY_COOKIE: ${{ secrets.SWIGGY_COOKIE }}
           USE_BROWSER: 'false'
-          INPUT_CHUNK: ${{ inputs.specific_chunk }}
-          MATRIX_CHUNK: ${{ matrix.chunk }}
+          SKIP_SYNC: ${{ inputs.skip_sync }}
         run: |
-          CHUNK_TO_RUN="${INPUT_CHUNK:-$MATRIX_CHUNK}"
-          echo "Executing Keyword Deal Hunter for chunk $CHUNK_TO_RUN of 3..."
-          node src/cron-runner.js keywords --chunk "$CHUNK_TO_RUN" --total-chunks 3
+          EXTRA_FLAGS=""
+          if [ "$SKIP_SYNC" = "true" ]; then
+            EXTRA_FLAGS="--skip-sync"
+          fi
+          echo "Executing Single Consolidated Keyword Deal Hunter..."
+          node src/cron-runner.js keywords $EXTRA_FLAGS

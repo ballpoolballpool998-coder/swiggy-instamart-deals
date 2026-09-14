@@ -52,10 +52,13 @@ async function sendBatchAlerts(bot, chatId, deals, options = {}) {
   if (!deals || !deals.length) return;
   console.log(`[Notifier] Sending ${deals.length} deals in consolidated message(s) to chat ${chatId}…`);
 
-  const workerTag = options.workerInfo ? `<b>[${options.workerInfo} Deals • ${deals.length} Found]</b>\n\n` : `<b>[Instamart Deals • ${deals.length} Found]</b>\n\n`;
+  const timeTag = options.timeString ? ` • ${options.timeString}` : '';
+  const headerTag = options.workerInfo
+    ? `<b>[${options.workerInfo} • ${deals.length} Found${timeTag}]</b>\n\n`
+    : `<b>[Instamart Deals • ${deals.length} Found${timeTag}]</b>\n\n`;
 
   const messages = [];
-  let currentMsg = workerTag;
+  let currentMsg = headerTag;
 
   for (let i = 0; i < deals.length; i++) {
     const itemText = formatCompactItem(deals[i], i + 1) + '\n\n';
