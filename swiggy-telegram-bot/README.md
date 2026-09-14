@@ -104,9 +104,9 @@ A workflow is configured in `.github/workflows/keyword-hunter.yml`:
 
 ---
 
-## 🔖 Standalone Browser Bookmarklet
+## 🔖 Standalone Browser Bookmarklets
 
-For scanning deals directly in your browser tab without running Node.js:
-1. Open `swiggy-keyword-hunter-installer.html` in your browser.
-2. Drag the **Hunt Keyword Deals** button to your bookmarks bar.
-3. Visit [swiggy.com/instamart](https://www.swiggy.com/instamart) and click the bookmark.
+For scanning deals directly in your browser without running Node.js or Telegram:
+1. Open `index.html` in your browser (or visit your GitHub Pages URL).
+2. Drag either or both buttons (**Keyword Deal Hunter** and **Category Scout**) to your bookmarks bar.
+3. Visit [swiggy.com/instamart](https://www.swiggy.com/instamart) and click the bookmark anytime you want to shop.

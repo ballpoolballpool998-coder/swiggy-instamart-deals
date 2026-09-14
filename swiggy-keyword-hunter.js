@@ -67,8 +67,10 @@ javascript:(async () => {
   if (btn) btn.remove();
   btn = document.createElement("div");
   btn.id = "swiggy-hunter-btn";
-  btn.style.cssText = "position:fixed;bottom:80px;right:20px;z-index:999999;background:#111;color:#fff;padding:12px 20px;border-radius:30px;font:bold 13px system-ui,-apple-system,sans-serif;box-shadow:0 6px 22px rgba(0,0,0,0.4);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s ease;";
-  btn.innerHTML = "🎯 <span>Hunt Keyword Deals</span>";
+  btn.style.cssText = "position:fixed;bottom:80px;right:20px;z-index:999999;background:#ffffff;color:#0f172a;border:1px solid #cbd5e1;padding:10px 18px;border-radius:24px;font:600 13px system-ui,-apple-system,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.15s ease;";
+  btn.innerHTML = "<span>Hunt Keyword Deals</span>";
+  btn.onmouseenter = () => { btn.style.borderColor = "#fc8019"; };
+  btn.onmouseleave = () => { btn.style.borderColor = "#cbd5e1"; };
   document.body.appendChild(btn);
 
   const updateStatus = (text) => {
@@ -81,7 +83,7 @@ javascript:(async () => {
   let pauseUntil = 0;
   const checkPause = async () => {
     while (Date.now() < pauseUntil) {
-      updateStatus("⚠️ Paused (Rate Limit)...");
+      updateStatus("Paused (Rate limit cooldown)...");
       await sleep(1000);
     }
   };
@@ -98,11 +100,13 @@ javascript:(async () => {
 
       if (res.status === 403 || res.status === 429) {
         if (retry >= 3) return null;
-        pauseUntil = Date.now() + 15000;
+        pauseUntil = Date.now() + 12000;
         await checkPause();
         return safeFetch(url, body, retry + 1);
       }
-      return res.status === 200 ? await res.json() : null;
+
+      if (res.status !== 200) return null;
+      return await res.json();
     } catch (e) {
       return null;
     }
@@ -110,30 +114,39 @@ javascript:(async () => {
 
   btn.onclick = async () => {
     btn.style.background = "#fc8019";
+    btn.style.color = "#ffffff";
+    btn.style.borderColor = "#fc8019";
     btn.onclick = null;
-    updateStatus("🔍 Detecting Store ID…");
+    updateStatus("Detecting Store...");
 
     const storeIds = new Set();
+
+    // 1. Check network requests
     try {
-      performance.getEntries().forEach((e) => {
-        const m = e.name.match(/storeId=(\d+)/);
-        if (m) storeIds.add(m[1]);
+      performance.getEntries().forEach((entry) => {
+        const match = entry.name.match(/storeId=(\d+)/);
+        if (match) storeIds.add(match[1]);
       });
+    } catch (e) {}
+
+    // 2. Check LocalStorage
+    try {
       const loc = localStorage.getItem("userLocation") || localStorage.getItem("im_user_location");
       if (loc) {
-        const m = loc.match(/"storeId"\s*:\s*"?(\d+)"?/);
-        if (m) storeIds.add(m[1]);
+        const match = loc.match(/"storeId"\s*:\s*"?(\d+)"?/);
+        if (match) storeIds.add(match[1]);
       }
     } catch (e) {}
 
     let validStores = Array.from(storeIds).filter((id) => id.length > 4);
+
     if (!validStores.length) {
       const manual = prompt("Enter your Instamart Store ID (or comma-separated IDs):", "1400216");
       if (manual) validStores = manual.split(",").map((s) => s.trim()).filter(Boolean);
     }
 
     if (!validStores.length) {
-      updateStatus("❌ No Store ID Found");
+      updateStatus("Store ID Not Found");
       return;
     }
 
@@ -231,7 +244,7 @@ javascript:(async () => {
       }
 
       completedTasks++;
-      updateStatus(`📦 ${Math.round((completedTasks / totalTasks) * 100)}% (${dealsMap.size} deals)`);
+      updateStatus(`${Math.round((completedTasks / totalTasks) * 100)}% (${dealsMap.size} deals)`);
     };
 
     let activeCount = 0;
@@ -243,12 +256,12 @@ javascript:(async () => {
       await sleep(200);
     }
 
-    updateStatus(`✅ Found ${dealsMap.size} Deals!`);
+    updateStatus(`Found ${dealsMap.size} Deals`);
     const dealsList = Array.from(dealsMap.values());
     dealsList.sort((a, b) => b.discount - a.discount);
 
     if (!dealsList.length) {
-      alert(`Scanned ${totalTasks} searches. No deals found matching thresholds (Essentials ≥${CONFIG.thresholds.essential}%, Snacks ≥${CONFIG.thresholds.treats}%). Try lowering thresholds!`);
+      alert(`Scanned ${totalTasks} searches. No deals found matching thresholds (Essentials ≥${CONFIG.thresholds.essential}%, Snacks ≥${CONFIG.thresholds.treats}%).`);
       btn.remove();
       return;
     }
@@ -256,113 +269,119 @@ javascript:(async () => {
     setTimeout(() => {
       const resultsWin = window.open("", "SwiggyKeywordDeals");
       if (!resultsWin) {
-        alert("Pop-up blocked! Please allow pop-ups for this site to view the deals dashboard.");
+        alert("Pop-up blocked. Please allow pop-ups for swiggy.com to view the deals dashboard.");
         return;
       }
 
-      resultsWin.document.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Instamart Keyword Deal Hunter</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f8; margin: 0; padding: 16px; color: #222; }
-    .header { position: sticky; top: 0; background: #fff; padding: 14px 20px; border-radius: 14px; box-shadow: 0 4px 18px rgba(0,0,0,0.06); margin-bottom: 20px; z-index: 100; }
-    .title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .title { font-size: 18px; font-weight: 800; color: #111; }
-    .badge { background: #fc8019; color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-    .controls { display: flex; flex-wrap: wrap; gap: 10px; }
-    input, select { padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fafafa; outline: none; }
-    input#search { flex: 2; min-width: 180px; }
-    select { flex: 1; min-width: 140px; cursor: pointer; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
-    .card { background: #fff; border-radius: 16px; border: 1px solid #eef0f2; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.15s, box-shadow 0.15s; }
-    .card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-    .img-wrap { position: relative; padding-top: 90%; background: #fafafa; }
-    .img-wrap img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; padding: 14px; }
-    .disc-tag { position: absolute; top: 10px; left: 10px; background: #00875a; color: #fff; font-size: 12px; font-weight: 800; padding: 4px 8px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
-    .disc-tag.treats { background: #e0284f; }
-    .info { padding: 14px; display: flex; flex-direction: column; flex: 1; }
-    .name { font-size: 13px; font-weight: 600; line-height: 1.4; height: 38px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 6px; }
-    .query-tag { font-size: 11px; color: #777; margin-bottom: 8px; }
-    .price-row { display: flex; align-items: baseline; gap: 8px; margin-top: auto; }
-    .price { font-size: 17px; font-weight: 800; color: #111; }
-    .mrp { font-size: 13px; color: #888; text-decoration: line-through; }
-    .savings { font-size: 11px; color: #00875a; font-weight: 700; margin-top: 3px; }
-    .btn-link { margin-top: 10px; display: block; text-align: center; background: #fc8019; color: #fff; text-decoration: none; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: bold; }
-    .btn-link:hover { background: #e26f12; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="title-row">
-      <div class="title">⚡ Instamart Keyword Deals</div>
-      <span class="badge" id="dealCount">${dealsList.length} Deals Found</span>
-    </div>
-    <div class="controls">
-      <input id="search" placeholder="Search ${dealsList.length} items..." onkeyup="render()">
-      <select id="typeFilter" onchange="render()">
-        <option value="all">All Categories</option>
-        <option value="essential">Grocery Essentials (≥65%)</option>
-        <option value="treats">Snacks & Treats (≥75%)</option>
-      </select>
-      <select id="sort" onchange="render()">
-        <option value="discount">Sort: Highest Discount</option>
-        <option value="priceAsc">Sort: Price (Low to High)</option>
-        <option value="savings">Sort: Maximum Savings (₹)</option>
-      </select>
-    </div>
-  </div>
-  <div id="grid" class="grid"></div>
-  <script>
-    const DEALS = ${JSON.stringify(dealsList)};
-    function render() {
-      const q = document.getElementById("search").value.toLowerCase();
-      const type = document.getElementById("typeFilter").value;
-      const sort = document.getElementById("sort").value;
+      const serializedDeals = JSON.stringify(dealsList).replace(/<\/script>/gi, '<\\/script>');
 
-      let filtered = DEALS.filter(d => {
-        if (type !== "all" && d.type !== type) return false;
-        if (q && !d.name.toLowerCase().includes(q) && !d.query.toLowerCase().includes(q)) return false;
-        return true;
-      });
+      const html = '<!DOCTYPE html>'
+        + '<html lang="en">'
+        + '<head>'
+        + '<meta charset="utf-8">'
+        + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        + '<title>Instamart Keyword Deals</title>'
+        + '<style>'
+        + ':root{color-scheme:light;}'
+        + '*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}'
+        + 'body{background:#f8fafc;color:#0f172a;padding:20px;}'
+        + '.header{position:sticky;top:0;background:#ffffff;padding:16px 20px;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 2px 10px rgba(0,0,0,0.03);margin-bottom:20px;z-index:100;}'
+        + '.title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}'
+        + '.title{font-size:18px;font-weight:700;color:#0f172a;letter-spacing:-0.01em;}'
+        + '.badge{background:#fff7ed;color:#ea580c;border:1px solid #ffedd5;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;}'
+        + '.controls{display:flex;flex-wrap:wrap;gap:10px;}'
+        + 'input,select{padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#f8fafc;color:#0f172a;outline:none;}'
+        + 'input:focus,select:focus{border-color:#fc8019;background:#ffffff;}'
+        + 'input#search{flex:2;min-width:200px;}'
+        + 'select{flex:1;min-width:150px;cursor:pointer;}'
+        + '.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}'
+        + '.card{background:#ffffff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;display:flex;flex-direction:column;transition:border-color 0.15s,box-shadow 0.15s;}'
+        + '.card:hover{border-color:#cbd5e1;box-shadow:0 4px 16px rgba(0,0,0,0.04);}'
+        + '.img-wrap{position:relative;padding-top:85%;background:#f8fafc;border-bottom:1px solid #f1f5f9;}'
+        + '.img-wrap img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;padding:12px;}'
+        + '.disc-tag{position:absolute;top:8px;left:8px;background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;font-size:11px;font-weight:700;padding:3px 7px;border-radius:6px;}'
+        + '.disc-tag.treats{background:#fee2e2;color:#b91c1c;border-color:#fecaca;}'
+        + '.info{padding:14px;display:flex;flex-direction:column;flex:1;}'
+        + '.name{font-size:13px;font-weight:600;line-height:1.4;height:36px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:6px;color:#0f172a;}'
+        + '.query-tag{font-size:11px;color:#64748b;margin-bottom:8px;}'
+        + '.price-row{display:flex;align-items:baseline;gap:6px;margin-top:auto;}'
+        + '.price{font-size:16px;font-weight:700;color:#0f172a;}'
+        + '.mrp{font-size:12px;color:#94a3b8;text-decoration:line-through;}'
+        + '.savings{font-size:11px;color:#16a34a;font-weight:600;margin-top:3px;}'
+        + '.btn-link{margin-top:10px;display:block;text-align:center;background:#0f172a;color:#ffffff;text-decoration:none;padding:7px 10px;border-radius:6px;font-size:12px;font-weight:600;transition:background 0.15s;}'
+        + '.btn-link:hover{background:#fc8019;}'
+        + '</style>'
+        + '</head>'
+        + '<body>'
+        + '<div class="header">'
+        + '<div class="title-row">'
+        + '<div class="title">Instamart Keyword Deals</div>'
+        + '<span class="badge" id="dealCount">' + dealsList.length + ' Deals</span>'
+        + '</div>'
+        + '<div class="controls">'
+        + '<input id="search" placeholder="Search ' + dealsList.length + ' products...">'
+        + '<select id="typeFilter">'
+        + '<option value="all">All Items</option>'
+        + '<option value="essential">Essentials (&ge;65% OFF)</option>'
+        + '<option value="treats">Snacks &amp; Treats (&ge;75% OFF)</option>'
+        + '</select>'
+        + '<select id="sort">'
+        + '<option value="discount">Sort: Highest Discount</option>'
+        + '<option value="priceAsc">Sort: Price (Low to High)</option>'
+        + '<option value="savings">Sort: Maximum Savings</option>'
+        + '</select>'
+        + '</div>'
+        + '</div>'
+        + '<div id="grid" class="grid"></div>'
+        + '<script>'
+        + 'var DEALS = ' + serializedDeals + ';'
+        + 'function esc(s){return String(s||\'\').replace(/[&<>"\\\']/g,function(m){return{"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","\'":"&#39;"}[m];});}'
+        + 'function render(){'
+        + '  var q = document.getElementById("search").value.trim().toLowerCase();'
+        + '  var type = document.getElementById("typeFilter").value;'
+        + '  var sort = document.getElementById("sort").value;'
+        + '  var filtered = DEALS.filter(function(d){'
+        + '    if(type !== "all" && d.type !== type) return false;'
+        + '    if(q && d.name.toLowerCase().indexOf(q) === -1 && d.query.toLowerCase().indexOf(q) === -1) return false;'
+        + '    return true;'
+        + '  });'
+        + '  if(sort === "discount") filtered.sort(function(a,b){return b.discount - a.discount;});'
+        + '  if(sort === "priceAsc") filtered.sort(function(a,b){return a.price - b.price;});'
+        + '  if(sort === "savings") filtered.sort(function(a,b){return b.savings - a.savings;});'
+        + '  document.getElementById("dealCount").innerText = filtered.length + " Deals";'
+        + '  var html = "";'
+        + '  for(var i = 0; i < filtered.length; i++){'
+        + '    var d = filtered[i];'
+        + '    var imgUrl = d.img ? ("https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_360,h_360,c_fit/" + d.img) : "";'
+        + '    var tagClass = d.type === "treats" ? "disc-tag treats" : "disc-tag";'
+        + '    var searchUrl = "https://www.swiggy.com/instamart/search?custom_back=true&query=" + encodeURIComponent(d.name);'
+        + '    html += \'<div class="card">\' '
+        + '      + \'<div class="img-wrap">\' '
+        + '      + \'<span class="\' + tagClass + \'">\' + d.discount + \'% OFF</span>\' '
+        + '      + (imgUrl ? \'<img src="\' + imgUrl + \'" loading="lazy" alt="">\' : \'\') '
+        + '      + \'</div>\' '
+        + '      + \'<div class="info">\' '
+        + '      + \'<div class="name" title="\' + esc(d.name) + \'">\' + esc(d.name) + \'</div>\' '
+        + '      + \'<div class="query-tag">\' + (d.type === "essential" ? "Essential" : "Snack") + " &bull; " + esc(d.query) + \'</div>\' '
+        + '      + \'<div class="price-row">\' '
+        + '      + \'<span class="price">&#8377;\' + d.price + \'</span>\' '
+        + '      + (d.mrp > d.price ? \'<span class="mrp">&#8377;\' + d.mrp + \'</span>\' : \'\') '
+        + '      + \'</div>\' '
+        + '      + (d.savings > 0 ? \'<div class="savings">Save &#8377;\' + d.savings + \'</div>\' : \'\') '
+        + '      + \'<a class="btn-link" href="\' + searchUrl + \'" target="_blank" rel="noopener">Search on Instamart &rarr;</a>\' '
+        + '      + \'</div></div>\';'
+        + '  }'
+        + '  document.getElementById("grid").innerHTML = html || \'<div style="grid-column:1/-1;text-align:center;padding:40px;color:#64748b;font-size:13px;">No deals match your search criteria.</div>\';'
+        + '}'
+        + 'document.getElementById("search").addEventListener("input", render);'
+        + 'document.getElementById("typeFilter").addEventListener("change", render);'
+        + 'document.getElementById("sort").addEventListener("change", render);'
+        + 'render();'
+        + '<' + '/script>'
+        + '</body>'
+        + '</html>';
 
-      if (sort === "discount") filtered.sort((a, b) => b.discount - a.discount);
-      if (sort === "priceAsc") filtered.sort((a, b) => a.price - b.price);
-      if (sort === "savings") filtered.sort((a, b) => b.savings - a.savings);
-
-      document.getElementById("dealCount").innerText = filtered.length + " Deals";
-
-      const html = filtered.map(d => {
-        const imgUrl = d.img ? ("https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_360,h_360,c_fit/" + d.img) : "https://via.placeholder.com/300";
-        const tagClass = d.type === "treats" ? "disc-tag treats" : "disc-tag";
-        const searchUrl = "https://www.swiggy.com/instamart/search?custom_back=true&query=" + encodeURIComponent(d.name);
-        return \`<div class="card">
-          <div class="img-wrap">
-            <span class="\${tagClass}">\${d.discount}% OFF</span>
-            <img src="\${imgUrl}" loading="lazy" alt="">
-          </div>
-          <div class="info">
-            <div class="name" title="\${d.name}">\${d.name}</div>
-            <div class="query-tag">🏷️ \${d.query} (\${d.type === 'essential' ? 'Essential' : 'Snack'})</div>
-            <div class="price-row">
-              <span class="price">₹\${d.price}</span>
-              <span class="mrp">₹\${d.mrp}</span>
-            </div>
-            <div class="savings">Save ₹\${d.savings}</div>
-            <a class="btn-link" href="\${searchUrl}" target="_blank">Search on Instamart ↗</a>
-          </div>
-        </div>\`;
-      }).join("");
-
-      document.getElementById("grid").innerHTML = html || '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#888;">No deals match your criteria.</div>';
-    }
-    render();
-  <\/script>
-</body>
-</html>`);
+      resultsWin.document.write(html);
       resultsWin.document.close();
       btn.remove();
     }, 400);

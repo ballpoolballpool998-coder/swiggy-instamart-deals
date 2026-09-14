@@ -27,7 +27,7 @@ javascript:(async () => {
     sections: ['All', 'Featured', 'Fresh', 'Grocery', 'Snacks', 'Beauty', 'Household'],
     cats: {
       // 0. Featured Brand & Campaign Stores
-      "✨ The NOICE Store": {
+      "The NOICE Store": {
         cName: "The NOICE Store",
         section: "Featured",
         isCampaign: true,
@@ -43,7 +43,7 @@ javascript:(async () => {
           { name: "Juices, Kombucha & Coffee", id: "beverages" }
         ]
       },
-      "🛍️ Wednesday Bazaar": {
+      "Wednesday Bazaar": {
         cName: "Wednesday Bazaar",
         section: "Featured",
         isCampaign: true,
@@ -61,9 +61,9 @@ javascript:(async () => {
       },
 
       // 1. Fresh Items
-      "🥬 Fresh Vegetables": { cName: "Fresh Vegetables", tType: "Speciality taxonomy 1", section: "Fresh", subs: [] },
-      "🍎 Fresh Fruits": { cName: "Fresh Fruits", tType: "Speciality taxonomy 1", section: "Fresh", subs: [] },
-      "🥛 Dairy, Bread & Eggs": {
+      "Fresh Vegetables": { cName: "Fresh Vegetables", tType: "Speciality taxonomy 1", section: "Fresh", subs: [] },
+      "Fresh Fruits": { cName: "Fresh Fruits", tType: "Speciality taxonomy 1", section: "Fresh", subs: [] },
+      "Dairy, Bread & Eggs": {
         cName: "Dairy, Bread and Eggs",
         tType: "Speciality taxonomy 1",
         section: "Fresh",
@@ -85,10 +85,10 @@ javascript:(async () => {
           { name: "Milkshakes and More", id: "6822eeeded32000001e25ac9" }
         ]
       },
-      "🍗 Meat & Seafood": { cName: "Meat and Seafood", tType: "Speciality taxonomy 1", section: "Fresh", subs: [] },
+      "Meat & Seafood": { cName: "Meat and Seafood", tType: "Speciality taxonomy 1", section: "Fresh", subs: [] },
 
       // 2. Grocery & Kitchen
-      "🌾 Atta, Rice & Dal": {
+      "Atta, Rice & Dal": {
         cName: "Atta, Rice and Dal",
         tType: "taxonomy 5",
         section: "Grocery",
@@ -109,7 +109,7 @@ javascript:(async () => {
           { name: "Ready to Cook Flour Mix", id: "6903b01ed2c61b000112ba34" }
         ]
       },
-      "🧂 Masalas": {
+      "Masalas": {
         cName: "Masalas",
         tType: "taxonomy 5",
         section: "Grocery",
@@ -128,7 +128,7 @@ javascript:(async () => {
           { name: "Top Deals", id: "6a225b6a3c3eb20001d0f550" }
         ]
       },
-      "🛢️ Oils & Ghee": {
+      "Oils & Ghee": {
         cName: "Oils and Ghee",
         tType: "taxonomy 5",
         section: "Grocery",
@@ -147,7 +147,7 @@ javascript:(async () => {
           { name: "Premium Brands", id: "69394956ed899c0001b1aed5" }
         ]
       },
-      "🥣 Cereals & Breakfast": {
+      "Cereals & Breakfast": {
         cName: "Cereals and Breakfast",
         tType: "taxonomy 5",
         section: "Grocery",
@@ -175,9 +175,9 @@ javascript:(async () => {
       },
 
       // 3. Snacks & Drinks
-      "🥤 Cold Drinks & Juices": { cName: "Cold Drinks and Juices", tType: "taxonomy 10", section: "Snacks", subs: [] },
-      "🍨 Ice Creams & Desserts": { cName: "Ice Creams and Frozen Desserts", tType: "taxonomy 10", section: "Snacks", subs: [] },
-      "🍿 Chips & Namkeens": {
+      "Cold Drinks & Juices": { cName: "Cold Drinks and Juices", tType: "taxonomy 10", section: "Snacks", subs: [] },
+      "Ice Creams & Desserts": { cName: "Ice Creams and Frozen Desserts", tType: "taxonomy 10", section: "Snacks", subs: [] },
+      "Chips & Namkeens": {
         cName: "Chips and Namkeens",
         tType: "taxonomy 10",
         section: "Snacks",
@@ -200,7 +200,7 @@ javascript:(async () => {
           { name: "Sweet Treats", id: "6903b0c295d8230001064ca7" }
         ]
       },
-      "🍫 Chocolates": {
+      "Chocolates": {
         cName: "Chocolates",
         tType: "taxonomy 10",
         section: "Snacks",
@@ -218,8 +218,8 @@ javascript:(async () => {
           { name: "Gums & Mint", id: "693d17b2c0e8870001d2d8fb" }
         ]
       },
-      "🍪 Biscuits & Cakes": { cName: "Biscuits and Cakes", tType: "taxonomy 10", section: "Snacks", subs: [] },
-      "☕ Tea, Coffee & Drinks": {
+      "Biscuits & Cakes": { cName: "Biscuits and Cakes", tType: "taxonomy 10", section: "Snacks", subs: [] },
+      "Tea, Coffee & Drinks": {
         cName: "Tea, Coffee and Milk drinks",
         tType: "taxonomy 10",
         section: "Snacks",
@@ -240,8 +240,8 @@ javascript:(async () => {
           { name: "Imported", id: "696e372795eb7700017f9a2b" }
         ]
       },
-      "🥫 Sauces & Spreads": { cName: "Sauces and Spreads", tType: "taxonomy 10", section: "Snacks", subs: [] },
-      "🍬 Sweet Corner": {
+      "Sauces & Spreads": { cName: "Sauces and Spreads", tType: "taxonomy 10", section: "Snacks", subs: [] },
+      "Sweet Corner": {
         cName: "Sweet Corner",
         tType: "taxonomy 10",
         section: "Snacks",
@@ -263,15 +263,15 @@ javascript:(async () => {
           { name: "Dessert Mixes", id: "693f772b01a77200013e2a0d" }
         ]
       },
-      "🍜 Noodles, Pasta & Vermicelli": { cName: "Noodles, Pasta, Vermicelli", tType: "taxonomy 10", section: "Snacks", subs: [] },
-      "🧊 Frozen Food": { cName: "Frozen Food", tType: "taxonomy 10", section: "Snacks", subs: [] },
-      "🥜 Dry Fruits & Seeds Mix": { cName: "Dry Fruits and Seeds Mix", tType: "taxonomy 10", section: "Snacks", subs: [] },
-      "🍃 Paan Corner": { cName: "Paan Corner", tType: "taxonomy 10", section: "Snacks", subs: [] },
+      "Noodles, Pasta & Vermicelli": { cName: "Noodles, Pasta, Vermicelli", tType: "taxonomy 10", section: "Snacks", subs: [] },
+      "Frozen Food": { cName: "Frozen Food", tType: "taxonomy 10", section: "Snacks", subs: [] },
+      "Dry Fruits & Seeds Mix": { cName: "Dry Fruits and Seeds Mix", tType: "taxonomy 10", section: "Snacks", subs: [] },
+      "Paan Corner": { cName: "Paan Corner", tType: "taxonomy 10", section: "Snacks", subs: [] },
 
       // 4. Beauty & Wellness
-      "🧼 Bath & Body": { cName: "Bath and Body", tType: "taxonomy 14", section: "Beauty", subs: [] },
-      "💇 Hair Care": { cName: "Hair Care", tType: "taxonomy 14", section: "Beauty", subs: [] },
-      "✨ Skincare": {
+      "Bath & Body": { cName: "Bath and Body", tType: "taxonomy 14", section: "Beauty", subs: [] },
+      "Hair Care": { cName: "Hair Care", tType: "taxonomy 14", section: "Beauty", subs: [] },
+      "Skincare": {
         cName: "Skincare",
         tType: "taxonomy 14",
         section: "Beauty",
@@ -285,21 +285,21 @@ javascript:(async () => {
           { name: "Beauty Supplements", id: "6903b10bd2c61b000112babf" }
         ]
       },
-      "💄 Makeup": { cName: "Makeup", tType: "taxonomy 14", section: "Beauty", subs: [] },
-      "🌸 Feminine Hygiene": { cName: "Feminine Hygiene", tType: "taxonomy 14", section: "Beauty", subs: [] },
-      "❤️ Sexual Wellness": { cName: "Sexual Wellness", tType: "taxonomy 14", section: "Beauty", subs: [] },
-      "💊 Health & Pharma": { cName: "Health and Pharma", tType: "taxonomy 14", section: "Beauty", subs: [] },
-      "👶 Baby Care": { cName: "Baby Care", tType: "taxonomy 14", section: "Beauty", subs: [] },
+      "Makeup": { cName: "Makeup", tType: "taxonomy 14", section: "Beauty", subs: [] },
+      "Feminine Hygiene": { cName: "Feminine Hygiene", tType: "taxonomy 14", section: "Beauty", subs: [] },
+      "Sexual Wellness": { cName: "Sexual Wellness", tType: "taxonomy 14", section: "Beauty", subs: [] },
+      "Health & Pharma": { cName: "Health and Pharma", tType: "taxonomy 14", section: "Beauty", subs: [] },
+      "Baby Care": { cName: "Baby Care", tType: "taxonomy 14", section: "Beauty", subs: [] },
 
       // 5. Household & Lifestyle
-      "🍳 Home & Kitchen": { cName: "Home and Kitchen", tType: "IM Meatsy", section: "Household", subs: [] },
-      "🪔 Puja Store": { cName: "Puja Store", tType: "IM Meatsy", section: "Household", subs: [] },
-      "🧹 Cleaners & Repellents": { cName: "Cleaners and Repellents", tType: "IM Meatsy", section: "Household", subs: [] },
-      "🧸 Toys & Stationery": { cName: "Toys and Stationery", tType: "IM Meatsy", section: "Household", subs: [] },
-      "🔌 Electronics & Appliances": { cName: "Electronics and Appliances", tType: "IM Meatsy", section: "Household", subs: [] },
-      "👕 Fashion": { cName: "Fashion", tType: "IM Meatsy", section: "Household", subs: [] },
-      "🐾 Pet Supplies": { cName: "Pet Supplies", tType: "IM Meatsy", section: "Household", subs: [] },
-      "🏃 Sports & Fitness": { cName: "Sports and Fitness", tType: "IM Meatsy", section: "Household", subs: [] }
+      "Home & Kitchen": { cName: "Home and Kitchen", tType: "IM Meatsy", section: "Household", subs: [] },
+      "Puja Store": { cName: "Puja Store", tType: "IM Meatsy", section: "Household", subs: [] },
+      "Cleaners & Repellents": { cName: "Cleaners and Repellents", tType: "IM Meatsy", section: "Household", subs: [] },
+      "Toys & Stationery": { cName: "Toys and Stationery", tType: "IM Meatsy", section: "Household", subs: [] },
+      "Electronics & Appliances": { cName: "Electronics and Appliances", tType: "IM Meatsy", section: "Household", subs: [] },
+      "Fashion": { cName: "Fashion", tType: "IM Meatsy", section: "Household", subs: [] },
+      "Pet Supplies": { cName: "Pet Supplies", tType: "IM Meatsy", section: "Household", subs: [] },
+      "Sports & Fitness": { cName: "Sports and Fitness", tType: "IM Meatsy", section: "Household", subs: [] }
     }
   };
 
@@ -775,7 +775,7 @@ javascript:(async () => {
   root.innerHTML = `
     <div id="ih4-panel">
       <div id="ih4-panel-head">
-        <div class="ih4-title">⚡ Instamart Hunter <span class="ih4-badge">v4 Category Scout</span></div>
+        <div class="ih4-title">Instamart Category Scout</div>
         <div class="ih4-sub">Choose a category to fetch <b>Page 1 top deals</b> across its subcategories.</div>
         <button id="ih4-close" title="Close">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -944,29 +944,31 @@ javascript:(async () => {
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f8fafc; color: #0f172a; }
 
     header {
-      position: sticky; top: 0; background: #0f172a; color: #fff; padding: 14px 24px; z-index: 6;
+      position: sticky; top: 0; background: #ffffff; color: #0f172a; padding: 14px 24px; z-index: 6;
       display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+      border-bottom: 1px solid #e2e8f0;
     }
-    header h1 { font-size: 16px; margin: 0; font-weight: 800; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
-    header .badge { font-size: 11px; background: #fc8019; color: #fff; padding: 2px 8px; border-radius: 12px; font-weight: 700; }
-    header .scout-tag { font-size: 11px; background: #334155; color: #94a3b8; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+    header h1 { font-size: 16px; margin: 0; font-weight: 700; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; color: #0f172a; }
+    header .badge { font-size: 11px; background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+    header .scout-tag { font-size: 11px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
     header .header-actions { display: flex; align-items: center; gap: 12px; }
-    .count { font-size: 13px; color: #cbd5e1; }
+    .count { font-size: 13px; color: #64748b; font-weight: 500; }
     .btn-action {
-      padding: 7px 14px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #f8fafc;
+      padding: 7px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a;
       font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s ease;
     }
-    .btn-action:hover { background: #334155; border-color: #475569; }
+    .btn-action:hover { background: #f8fafc; border-color: #94a3b8; }
 
     .controls {
-      position: sticky; top: 52px; background: #fff; border-bottom: 1px solid #e2e8f0; padding: 12px 24px;
+      position: sticky; top: 52px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 12px 24px;
       display: flex; gap: 12px; flex-wrap: wrap; z-index: 5;
     }
     .controls input, .controls select {
-      padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px; color: #0f172a; background: #f8fafc; outline: none;
+      padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px; color: #0f172a; background: #ffffff; outline: none;
     }
-    .controls input:focus, .controls select:focus { border-color: #fc8019; background: #fff; }
-    .controls input { flex: 1; min-width: 220px; }
+    .controls input:focus, .controls select:focus { border-color: #fc8019; }
+    .controls input { flex: 2; min-width: 200px; }
+    .controls select { flex: 1; min-width: 160px; cursor: pointer; }
     .controls.disabled { opacity: .5; pointer-events: none; }
 
     table { width: 100%; border-collapse: collapse; background: #fff; }
@@ -1009,19 +1011,17 @@ javascript:(async () => {
 </head>
 <body>
   <header>
-    <h1>🛒 Instamart Hunter <span class="badge">Page 1 Top Deals</span> <span class="scout-tag">Category Scout</span></h1>
+    <h1>Instamart Category Scout <span class="badge">Top Deals</span></h1>
     <div class="header-actions">
       <span class="count" id="count">${hasInitial ? initialData.length + ' deals' : 'Starting Scout…'}</span>
-      
     </div>
   </header>
 
   <div class="controls ${hasInitial ? '' : 'disabled'}" id="controls">
-    <input id="search" placeholder="Filter by product name, weight/size, category, subcategory…" />
-    <select id="catFilter">
-    <option value="">All Categories (${categoriesList.length})</option>
-    ${categoriesList.map((c) => '<option value="' + c + '">' + c + '</option>').join('')}
-  </select>
+    <input id="search" placeholder="Filter by product name, pack, subcategory…" />
+    <select id="subFilter">
+      <option value="">All Subcategories</option>
+    </select>
   </div>
 
   <div id="loading" style="${hasInitial ? 'display:none;' : ''}">
@@ -1036,7 +1036,6 @@ javascript:(async () => {
       <tr>
         <th></th>
         <th data-key="name">Product & Pack</th>
-        <th data-key="category">Category</th>
         <th data-key="subCategory">Subcategory</th>
         <th data-key="price">Price</th>
         <th data-key="discount">Discount</th>
@@ -1051,19 +1050,31 @@ javascript:(async () => {
   <script>
     let DATA = ${serializedData} || [];
     let META = ${serializedMeta} || null;
-    let sortKey = 'discount', sortDir = 'desc', query = '', catFilter = '';
+    let sortKey = 'discount', sortDir = 'desc', query = '', subFilter = '';
 
     function esc(s) {
       return String(s || '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    function updateSubFilter() {
+      const subSelect = document.getElementById('subFilter');
+      if (!subSelect) return;
+      const currentVal = subSelect.value;
+      const subs = Array.from(new Set(DATA.map(r => r.subCategory).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      let optHtml = '<option value="">All Subcategories (' + subs.length + ')</option>';
+      subs.forEach(s => {
+        optHtml += '<option value="' + esc(s) + '"' + (s === currentVal ? ' selected' : '') + '>' + esc(s) + '</option>';
+      });
+      subSelect.innerHTML = optHtml;
     }
 
     function render() {
       const q = query.trim().toLowerCase();
 
       let rows = DATA.filter((r) => {
-        if (catFilter && r.category !== catFilter) return false;
+        if (subFilter && r.subCategory !== subFilter) return false;
         if (!q) return true;
-        return (r.name + ' ' + (r.pack || '') + ' ' + r.category + ' ' + r.subCategory).toLowerCase().includes(q);
+        return (r.name + ' ' + (r.pack || '') + ' ' + (r.subCategory || '')).toLowerCase().includes(q);
       });
 
       rows.sort((a, b) => {
@@ -1082,7 +1093,7 @@ javascript:(async () => {
       if (rows.length === 0) {
         tableEl.style.display = 'none';
         emptyEl.style.display = 'block';
-        emptyEl.innerHTML = '<div style="padding:40px;color:#94a3b8;font-size:13px;">No items match your search/filter criteria.</div>';
+        emptyEl.innerHTML = '<div style="padding:40px;color:#64748b;font-size:13px;">No items match your search/filter criteria.</div>';
       } else {
         emptyEl.style.display = 'none';
         tableEl.style.display = 'table';
@@ -1093,7 +1104,6 @@ javascript:(async () => {
               <a href="\${esc(r.searchLink)}" target="_blank" rel="noopener">\${esc(r.name)}</a>
               \${r.pack ? '<div class="pack">' + esc(r.pack) + '</div>' : ''}
             </td>
-            <td>\${esc(r.category)}</td>
             <td><span class="tag">\${esc(r.subCategory)}</span></td>
             <td>₹\${r.price}\${r.mrp > r.price ? '<span class="mrp">₹' + r.mrp + '</span>' : ''}</td>
             <td>\${r.discount > 0 ? '<span class="discount">' + r.discount + '% OFF</span>' : '<span class="discount zero">—</span>'}</td>
@@ -1113,7 +1123,7 @@ javascript:(async () => {
     }
 
     document.getElementById('search').addEventListener('input', (e) => { query = e.target.value; render(); });
-    document.getElementById('catFilter').addEventListener('change', (e) => { catFilter = e.target.value; render(); });
+    document.getElementById('subFilter').addEventListener('change', (e) => { subFilter = e.target.value; render(); });
 
     document.querySelectorAll('thead th[data-key]').forEach((th) => {
       th.addEventListener('click', () => {
@@ -1122,7 +1132,7 @@ javascript:(async () => {
           sortDir = sortDir === 'asc' ? 'desc' : 'asc';
         } else {
           sortKey = key;
-          sortDir = key === 'name' || key === 'category' || key === 'subCategory' ? 'asc' : 'desc';
+          sortDir = key === 'name' || key === 'subCategory' ? 'asc' : 'desc';
         }
         render();
       });
@@ -1142,9 +1152,9 @@ javascript:(async () => {
       } else if (msg.type === 'done') {
         DATA = msg.items || [];
         META = msg.meta || null;
+        updateSubFilter();
         document.getElementById('loading').style.display = 'none';
         document.getElementById('controls').classList.remove('disabled');
-        
         render();
       }
     };
@@ -1158,6 +1168,7 @@ javascript:(async () => {
     if (${hasInitial}) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('controls').classList.remove('disabled');
+      updateSubFilter();
       render();
     } else {
       try {
