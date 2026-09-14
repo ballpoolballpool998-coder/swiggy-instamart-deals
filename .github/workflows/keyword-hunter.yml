@@ -7,18 +7,24 @@ on:
   workflow_dispatch:
     inputs:
       specific_chunk:
-        description: 'Specific chunk index (leave empty for matrix parallel execution)'
+        description: 'Specific chunk index (0, 1, or 2). Leave empty to run all 3 in parallel.'
         required: false
         default: ''
 
 jobs:
   hunt:
-    name: Hunt Deals (Worker ${{ matrix.chunk + 1 }}/3)
+    name: Worker ${{ matrix.worker }} of 3
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        chunk: [0, 1, 2]
+        include:
+          - worker: 1
+            chunk: 0
+          - worker: 2
+            chunk: 1
+          - worker: 3
+            chunk: 2
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -44,7 +50,9 @@ jobs:
           SWIGGY_SECONDARY_STORE_ID: ${{ secrets.SWIGGY_SECONDARY_STORE_ID || '1231805' }}
           SWIGGY_COOKIE: ${{ secrets.SWIGGY_COOKIE }}
           USE_BROWSER: 'false'
+          INPUT_CHUNK: ${{ inputs.specific_chunk }}
+          MATRIX_CHUNK: ${{ matrix.chunk }}
         run: |
-          CHUNK_TO_RUN="${{ github.event.inputs.specific_chunk != '' && github.event.inputs.specific_chunk || matrix.chunk }}"
+          CHUNK_TO_RUN="${INPUT_CHUNK:-$MATRIX_CHUNK}"
           echo "Executing Keyword Deal Hunter for chunk $CHUNK_TO_RUN of 3..."
-          node src/cron-runner.js keywords --chunk $CHUNK_TO_RUN --total-chunks 3
+          node src/cron-runner.js keywords --chunk "$CHUNK_TO_RUN" --total-chunks 3
