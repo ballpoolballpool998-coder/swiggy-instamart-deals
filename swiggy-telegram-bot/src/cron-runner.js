@@ -96,7 +96,7 @@ async function main() {
       const alerts = findAlertWorthyDeals(items, keywordThresholds, 'keywordHunter');
       console.log(`[KeywordHunter] Found ${alerts.length} alert-worthy deals (Essentials ≥ ${keywordThresholds.essentials}%, Snacks/Treats ≥ ${keywordThresholds.nonEssentials}%).`);
       if (bot && chatId && alerts.length > 0) {
-        await sendBatchAlerts(bot, chatId, alerts);
+        await sendBatchAlerts(bot, chatId, alerts, { workerInfo: `Worker ${chunkIndex + 1}/${totalChunks}` });
       }
     } catch (e) {
       console.error('[KeywordHunter] Error:', e.message);

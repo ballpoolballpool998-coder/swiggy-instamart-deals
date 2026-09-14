@@ -8,47 +8,29 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;');
 }
 
-function formatDealMessage(deal) {
-  const isDrop = deal.alertType === 'PRICE_DROP';
-  const discountLine = isDrop
-    ? `📉 <b>Discount:</b> ${deal.prevDiscount}% ➔ <b>${deal.discount}% OFF</b> (Price Drop!)`
-    : `🎯 <b>Discount:</b> <b>${deal.discount}% OFF</b>`;
-
-  let campaignBadge = '✨ <i>The NOICE Store</i>';
-  if (deal.campaignKey === 'wednesdayBazaar') {
-    campaignBadge = '🛍️ <i>Wednesday Bazaar (Top Deals)</i>';
-  } else if (deal.campaignKey === 'keywordHunter') {
-    if (deal.dealType === 'essential') {
-      campaignBadge = `🥛 <b>Essential Grocery Deal</b> (<i>${escapeHtml(deal.searchQuery || 'Essentials')}</i>)`;
-    } else {
-      campaignBadge = `🍿 <b>Snacks & Treats Deal</b> (<i>${escapeHtml(deal.searchQuery || 'Snacks')}</i>)`;
-    }
-  } else if (deal.campaignKey && deal.campaignKey.startsWith('category:')) {
-    campaignBadge = `🛒 <i>${deal.categoryTitle || deal.category || 'Category Deals'}</i>`;
-  }
-
-  const savings = Math.max(0, Math.round(deal.mrp - deal.price));
-  const packInfo = deal.pack ? ` (${escapeHtml(deal.pack)})` : '';
-  const catLine = deal.subCategory
-    ? `🏷️ <b>Subcategory:</b> ${escapeHtml(deal.subCategory)}`
-    : (deal.category ? `🏷️ <b>Category:</b> ${escapeHtml(deal.category)}` : '');
-  const ratingInfo = deal.rating ? ` ⭐ ${escapeHtml(deal.rating)}` : '';
-  const safeUrl = (deal.searchLink || '').replace(/"/g, '%22');
+/**
+ * Compact deal format:
+ * Product Name
+ * MRP: ₹X | Price: ₹Y | Z% OFF
+ * Click here (direct search link)
+ */
+function formatCompactItem(deal, index = null) {
+  const safeUrl = (deal.searchLink || `https://www.swiggy.com/instamart/search?custom_back=true&query=${encodeURIComponent(deal.name)}`).replace(/"/g, '%22');
+  const num = index !== null ? `${index}. ` : '• ';
 
   return (
-`${campaignBadge}
-
-📦 <b>${escapeHtml(deal.name)}</b>${packInfo}
-${discountLine}
-💰 <b>₹${deal.price}</b> <s>₹${deal.mrp}</s> (Save ₹${savings})${ratingInfo}
-${catLine}
-
-🛒 <a href="${safeUrl}">Search &amp; Add on Instamart</a>`
+`${num}<b>${escapeHtml(deal.name)}</b>
+MRP: ₹${deal.mrp} | Price: ₹${deal.price} | <b>${deal.discount}% OFF</b>
+<a href="${safeUrl}">Click here</a>`
   );
 }
 
+function formatDealMessage(deal) {
+  return formatCompactItem(deal);
+}
+
 async function sendDealAlert(bot, chatId, deal) {
-  const text = formatDealMessage(deal);
+  const text = formatCompactItem(deal);
 
   try {
     await bot.sendMessage(chatId, text, {
@@ -62,20 +44,52 @@ async function sendDealAlert(bot, chatId, deal) {
   }
 }
 
-async function sendBatchAlerts(bot, chatId, deals) {
+/**
+ * Clubs deals together into consolidated messages (one message per worker),
+ * chunking only if character length exceeds Telegram's 4096 character limit.
+ */
+async function sendBatchAlerts(bot, chatId, deals, options = {}) {
   if (!deals || !deals.length) return;
-  console.log(`[Notifier] Sending ${deals.length} alerts to chat ${chatId}…`);
+  console.log(`[Notifier] Sending ${deals.length} deals in consolidated message(s) to chat ${chatId}…`);
+
+  const workerTag = options.workerInfo ? `<b>[${options.workerInfo} Deals • ${deals.length} Found]</b>\n\n` : `<b>[Instamart Deals • ${deals.length} Found]</b>\n\n`;
+
+  const messages = [];
+  let currentMsg = workerTag;
 
   for (let i = 0; i < deals.length; i++) {
-    await sendDealAlert(bot, chatId, deals[i]);
-    // Polite pause to stay well under Telegram rate limits
-    if (i < deals.length - 1) {
+    const itemText = formatCompactItem(deals[i], i + 1) + '\n\n';
+
+    // Leave a safe margin below Telegram's 4096 character limit
+    if ((currentMsg + itemText).length > 3800) {
+      messages.push(currentMsg.trim());
+      currentMsg = itemText;
+    } else {
+      currentMsg += itemText;
+    }
+  }
+
+  if (currentMsg.trim()) {
+    messages.push(currentMsg.trim());
+  }
+
+  for (let i = 0; i < messages.length; i++) {
+    try {
+      await bot.sendMessage(chatId, messages[i], {
+        parse_mode: 'HTML',
+        disable_web_page_preview: true
+      });
+    } catch (err) {
+      console.error('[Notifier] Failed to send batch message:', err.message);
+    }
+    if (i < messages.length - 1) {
       await sleep(1000);
     }
   }
 }
 
 module.exports = {
+  formatCompactItem,
   formatDealMessage,
   sendDealAlert,
   sendBatchAlerts

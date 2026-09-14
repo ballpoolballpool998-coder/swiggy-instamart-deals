@@ -68,7 +68,7 @@ async function runKeywordScan(notifyChat = null) {
 
     const targetChat = notifyChat || chatId;
     if (bot && targetChat && alerts.length > 0) {
-      await sendBatchAlerts(bot, targetChat, alerts);
+      await sendBatchAlerts(bot, targetChat, alerts, { workerInfo: 'Keyword Hunter' });
     } else if (bot && targetChat && alerts.length === 0) {
       const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
       const locText = user?.area ? ` in ${user.area}` : '';
