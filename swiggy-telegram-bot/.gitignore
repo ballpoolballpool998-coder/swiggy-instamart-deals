@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Secrets & Environment Variables (NEVER commit these)
+.env
+*.env
+!.env.example
+
+# Local deal cache & databases
+data/
+*.log
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

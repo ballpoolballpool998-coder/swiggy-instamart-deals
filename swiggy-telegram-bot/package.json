@@ -1,0 +1,20 @@
+{
+  "name": "swiggy-deal-bot",
+  "version": "1.0.0",
+  "description": "Telegram Alert Bot for Swiggy Instamart deals (Noice & Wednesday Bazaar)",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node src/bot.js",
+    "cron": "node src/cron-runner.js",
+    "server": "node src/server.js",
+    "test:keywords": "node src/test-run.js keywords",
+    "test:noice": "node src/test-run.js noice",
+    "test:bazaar": "node src/test-run.js bazaar"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "node-telegram-bot-api": "^0.66.0",
+    "puppeteer-core": "^25.10.0"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "store": {
+    "sid": "1400216",
+    "pid": "1400216",
+    "secid": "1231805"
+  },
+  "minDiscount": 50,
+  "campaigns": {
+    "keywordHunter": {
+      "name": "Keyword Deal Hunter",
+      "type": "search",
+      "enabled": true,
+      "cron": "5 10-21 * * *",
+      "description": "Hourly between 10:00 AM and 9:05 PM",
+      "thresholds": {
+        "essentials": 65,
+        "nonEssentials": 75
+      },
+      "categories": {
+        "essentials": [
+          "Dairy, Bread & Eggs",
+          "Milk",
+          "Curd & Yoghurt",
+          "Butter & Cheese",
+          "Paneer & Cream",
+          "Atta, Rice & Dals",
+          "Oil & Ghee",
+          "Masala",
+          "Fruits and Vegetables",
+          "Seasonings",
+          "Cleaning Essentials",
+          "Detergents",
+          "Dishwash",
+          "Toilet Cleaner",
+          "Personal Care",
+          "Bath & Body",
+          "Skincare",
+          "Haircare",
+          "Baby Care"
+        ],
+        "nonEssentials": [
+          "Snacks+Munchies",
+          "Biscuits & Cookies",
+          "Cold Drinks & Juices",
+          "Cake",
+          "Tea",
+          "Coffee",
+          "Instant Food",
+          "Chocolates & Ice Creams",
+          "Dry Fruits & Cereals",
+          "Sweets"
+        ]
+      }
+    },
+    "wednesdayBazaar": {
+      "name": "Wednesday Bazaar",
+      "type": "collection",
+      "collectionId": "397320",
+      "layoutId": "32944",
+      "minDiscount": 50,
+      "enabled": true,
+      "cron": "2 0 * * 3",
+      "description": "Every Wednesday at 12:02 AM"
+    }
+  }
+}

@@ -1,0 +1,50 @@
+name: Swiggy Instamart Keyword Deal Hunter
+
+on:
+  schedule:
+    # Runs hourly at minute 5 between 04:00 UTC and 15:05 UTC (09:35 AM to 08:35 PM IST)
+    - cron: '5 4-15 * * *'
+  workflow_dispatch:
+    inputs:
+      specific_chunk:
+        description: 'Specific chunk index (leave empty for matrix parallel execution)'
+        required: false
+        default: ''
+
+jobs:
+  hunt:
+    name: Hunt Deals (Worker ${{ matrix.chunk + 1 }}/3)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        chunk: [0, 1, 2]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'swiggy-telegram-bot/package-lock.json'
+
+      - name: Install Dependencies
+        working-directory: swiggy-telegram-bot
+        run: npm ci || npm install
+
+      - name: Run Keyword Deal Hunter
+        working-directory: swiggy-telegram-bot
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SWIGGY_STORE_ID: ${{ secrets.SWIGGY_STORE_ID || '1400216' }}
+          SWIGGY_PRIMARY_STORE_ID: ${{ secrets.SWIGGY_PRIMARY_STORE_ID || '1400216' }}
+          SWIGGY_SECONDARY_STORE_ID: ${{ secrets.SWIGGY_SECONDARY_STORE_ID || '1231805' }}
+          SWIGGY_COOKIE: ${{ secrets.SWIGGY_COOKIE }}
+          USE_BROWSER: 'false'
+        run: |
+          CHUNK_TO_RUN="${{ github.event.inputs.specific_chunk != '' && github.event.inputs.specific_chunk || matrix.chunk }}"
+          echo "Executing Keyword Deal Hunter for chunk $CHUNK_TO_RUN of 3..."
+          node src/cron-runner.js keywords --chunk $CHUNK_TO_RUN --total-chunks 3
