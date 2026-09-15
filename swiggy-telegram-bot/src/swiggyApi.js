@@ -633,11 +633,56 @@ async function fetchKeywordDeals(storeConfig, options = {}) {
   return fetchKeywordDealsDirect(storeConfig, keywordItems);
 }
 
+async function fetchEssentialAisleDeals(storeConfig, options = {}) {
+  const cfg = require('../config.json');
+  const subcategories = options.subcategories || cfg.campaigns?.essentialAisles?.subcategories || [];
+  const { sid, pid, secid } = storeConfig;
+  const resultMap = new Map();
+
+  console.log(`[SwiggyAPI] Scanning ${subcategories.length} Essential Aisles for Store ${sid}...`);
+
+  for (let i = 0; i < subcategories.length; i++) {
+    const item = subcategories[i];
+    const filterUrl = `https://instamart.in/api/instamart/category-listing/filter/v2?storeId=${sid}&primaryStoreId=${pid}&secondaryStoreId=${secid}&pageNo=0&offset=0&page_name=category_listing_filter`;
+    const body = {
+      categoryName: item.category,
+      filterName: item.name,
+      filterId: item.id,
+      taxonomyType: item.taxonomyType || 'taxonomy 5',
+      items_offset: '0',
+      facets: [],
+      sortAttribute: 'discountPercentHighToLow'
+    };
+
+    const json = await apiRequestSafe(filterUrl, 'POST', body);
+    if (json?.data) {
+      const items = parseItemsFromData(json);
+      for (const it of items) {
+        it.category = item.category;
+        it.subCategory = item.name;
+        it.dealType = 'essential';
+
+        const existing = resultMap.get(it.name);
+        if (!existing || it.price < existing.price) {
+          resultMap.set(it.name, it);
+        }
+      }
+    }
+    await sleep(200);
+  }
+
+  const allItems = Array.from(resultMap.values());
+  allItems.sort((a, b) => b.discount - a.discount);
+  console.log(`[SwiggyAPI] Scraped ${allItems.length} unique items across ${subcategories.length} essential aisles.`);
+  return allItems;
+}
+
 module.exports = {
   INSTAMART_CATEGORIES,
   apiRequestSafe,
   fetchNoiceDeals,
   fetchWednesdayBazaarDeals,
   fetchCategoryDeals,
-  fetchKeywordDeals
+  fetchKeywordDeals,
+  fetchEssentialAisleDeals
 };

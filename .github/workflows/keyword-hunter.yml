@@ -49,5 +49,5 @@ jobs:
           if [ "$SKIP_SYNC" = "true" ]; then
             EXTRA_FLAGS="--skip-sync"
           fi
-          echo "Executing Single Consolidated Keyword Deal Hunter..."
-          node src/cron-runner.js keywords $EXTRA_FLAGS
+          echo "Executing Essential Aisles Deal Hunter (19 Curated Aisles)..."
+          node src/cron-runner.js essentials $EXTRA_FLAGS

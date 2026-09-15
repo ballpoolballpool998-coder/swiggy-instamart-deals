@@ -1,7 +1,7 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config.json');
-const { fetchKeywordDeals, fetchWednesdayBazaarDeals, fetchNoiceDeals } = require('./swiggyApi');
+const { fetchEssentialAisleDeals, fetchWednesdayBazaarDeals, fetchNoiceDeals } = require('./swiggyApi');
 const { findAlertWorthyDeals } = require('./dealTracker');
 const { sendBatchAlerts } = require('./notifier');
 
@@ -9,7 +9,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const chatId = process.env.TELEGRAM_CHAT_ID;
-const minDiscount = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || config.minDiscount || 50;
+const minDiscount = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || config.minDiscount || 45;
 
 const storeConfig = {
   sid: process.env.SWIGGY_STORE_ID || config.store.sid,
@@ -20,19 +20,11 @@ const storeConfig = {
 // Parse command line arguments
 const args = process.argv.slice(2);
 let mode = 'auto';
-let chunkIndex = 0;
-let totalChunks = 1;
 let skipSync = false;
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
-  if (arg === '--chunk' && args[i + 1] !== undefined) {
-    chunkIndex = parseInt(args[i + 1], 10) || 0;
-    i++;
-  } else if (arg === '--total-chunks' && args[i + 1] !== undefined) {
-    totalChunks = parseInt(args[i + 1], 10) || 1;
-    i++;
-  } else if (arg === '--skip-sync') {
+  if (arg === '--skip-sync') {
     skipSync = true;
   } else if (!arg.startsWith('--')) {
     mode = arg.toLowerCase();
@@ -71,7 +63,7 @@ async function syncToHourMark(skip = false) {
 }
 
 async function main() {
-  console.log(`[CronRunner] Mode: ${mode.toUpperCase()} | Store: ${storeConfig.sid} | Chunk: ${chunkIndex + 1}/${totalChunks}`);
+  console.log(`[CronRunner] Mode: ${mode.toUpperCase()} | Store: ${storeConfig.sid}`);
 
   // Synchronize to :00:00 IST if runner booted early in pre-hour window
   await syncToHourMark(skipSync);
@@ -92,12 +84,13 @@ async function main() {
 
   console.log(`[CronRunner] Active IST Time: ${istDate.toUTCString()} (Day: ${istDay}, Hour: ${istHours}:${String(istMinutes).padStart(2, '0')})`);
 
-  let shouldRunKeywords = false;
+  let shouldRunEssentials = false;
   let shouldRunBazaar = false;
   let shouldRunNoice = false;
 
-  if (mode === 'keywords') {
-    shouldRunKeywords = true;
+  // Accept 'keywords' alias for backwards compatibility with workflow triggers
+  if (mode === 'keywords' || mode === 'essentials' || mode === 'aisles') {
+    shouldRunEssentials = true;
   } else if (mode === 'bazaar') {
     shouldRunBazaar = true;
   } else if (mode === 'noice') {
@@ -108,21 +101,17 @@ async function main() {
     if (istDay === 3 && istHours === 0) {
       shouldRunBazaar = true;
     }
-    // 2. Keyword Deal Hunter between 9:00 AM and 10:00 PM IST
+    // 2. Essential Aisles Hunter between 9:00 AM and 10:00 PM IST
     if (istHours >= 9 && (istHours < 22 || (istHours === 22 && istMinutes <= 15))) {
-      shouldRunKeywords = true;
+      shouldRunEssentials = true;
     }
   }
 
-  const keywordHunterConfig = config.campaigns?.keywordHunter || {};
-  const keywordThresholds = keywordHunterConfig.thresholds || {
-    essentials: 65,
-    nonEssentials: 75
-  };
+  const essentialConfig = config.campaigns?.essentialAisles || {};
+  const essentialThreshold = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || essentialConfig.minDiscount || minDiscount || 45;
 
-  if (shouldRunKeywords) {
-    const chunkTag = totalChunks > 1 ? ` (Chunk ${chunkIndex + 1}/${totalChunks})` : '';
-    console.log(`\n--- Running Keyword Deal Hunter${chunkTag} ---`);
+  if (shouldRunEssentials) {
+    console.log(`\n--- Running Essential Aisles Scout (19 Subcategories) ---`);
 
     let items = [];
     let attempts = 0;
@@ -131,36 +120,33 @@ async function main() {
     while (attempts < maxAttempts) {
       attempts++;
       try {
-        console.log(`[KeywordHunter] Attempt ${attempts}/${maxAttempts} - Fetching deals...`);
-        items = await fetchKeywordDeals(storeConfig, {
-          chunkIndex,
-          totalChunks,
-          categories: keywordHunterConfig.categories,
-          thresholds: keywordThresholds
+        console.log(`[EssentialAisles] Attempt ${attempts}/${maxAttempts} - Fetching deals...`);
+        items = await fetchEssentialAisleDeals(storeConfig, {
+          subcategories: essentialConfig.subcategories
         });
 
         if (items && items.length > 0) {
-          console.log(`[KeywordHunter] Attempt ${attempts} succeeded: scraped ${items.length} items across target queries.`);
+          console.log(`[EssentialAisles] Attempt ${attempts} succeeded: scraped ${items.length} items across 19 aisles.`);
           break;
         } else {
-          console.warn(`[KeywordHunter] Attempt ${attempts} returned 0 items.`);
+          console.warn(`[EssentialAisles] Attempt ${attempts} returned 0 items.`);
           if (attempts < maxAttempts) {
-            console.log(`[KeywordHunter] Waiting 6s before retry ${attempts + 1}...`);
+            console.log(`[EssentialAisles] Waiting 6s before retry ${attempts + 1}...`);
             await sleep(6000);
           }
         }
       } catch (e) {
-        console.error(`[KeywordHunter] Attempt ${attempts} error:`, e.message);
+        console.error(`[EssentialAisles] Attempt ${attempts} error:`, e.message);
         if (attempts < maxAttempts) {
-          console.log(`[KeywordHunter] Waiting 6s before retry ${attempts + 1}...`);
+          console.log(`[EssentialAisles] Waiting 6s before retry ${attempts + 1}...`);
           await sleep(6000);
         }
       }
     }
 
     if (items.length > 0) {
-      const alerts = findAlertWorthyDeals(items, keywordThresholds, 'keywordHunter');
-      console.log(`[KeywordHunter] Found ${alerts.length} alert-worthy deals (Essentials ≥ ${keywordThresholds.essentials}%, Snacks/Treats ≥ ${keywordThresholds.nonEssentials}%).`);
+      const alerts = findAlertWorthyDeals(items, essentialThreshold, 'essentialAisles');
+      console.log(`[EssentialAisles] Found ${alerts.length} alert-worthy deals (Discount ≥ ${essentialThreshold}%).`);
       if (bot && chatId && alerts.length > 0) {
         const timeFormatter = new Intl.DateTimeFormat('en-US', {
           timeZone: 'Asia/Kolkata',
@@ -169,13 +155,12 @@ async function main() {
           hour12: true
         });
         const timeString = timeFormatter.format(new Date()) + ' IST';
-        const workerInfo = totalChunks > 1 ? `Worker ${chunkIndex + 1}/${totalChunks}` : null;
-        await sendBatchAlerts(bot, chatId, alerts, { timeString, workerInfo });
+        await sendBatchAlerts(bot, chatId, alerts, { timeString });
       } else if (!alerts.length) {
-        console.log('[KeywordHunter] No items met the minimum discount thresholds this run.');
+        console.log(`[EssentialAisles] No items met the minimum discount threshold (${essentialThreshold}%) this run.`);
       }
     } else {
-      console.error('[KeywordHunter] All retry attempts failed or returned 0 items.');
+      console.error('[EssentialAisles] All retry attempts failed or returned 0 items.');
     }
   }
 

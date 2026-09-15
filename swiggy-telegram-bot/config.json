@@ -4,62 +4,36 @@
     "pid": "1400216",
     "secid": "1231805"
   },
-  "minDiscount": 50,
+  "minDiscount": 45,
   "campaigns": {
-    "keywordHunter": {
-      "name": "Keyword Deal Hunter",
-      "type": "search",
+    "essentialAisles": {
+      "name": "Essential Aisles Deal Hunter",
+      "type": "subcategory",
       "enabled": true,
       "cron": "27 3-16 * * *",
       "description": "Hourly between 9:00 AM and 10:00 PM IST",
-      "thresholds": {
-        "essentials": 65,
-        "nonEssentials": 75
-      },
-      "categories": {
-        "essentials": [
-          "Atta",
-          "Rice",
-          "Dal",
-          "Oil",
-          "Ghee",
-          "Milk",
-          "Curd",
-          "Paneer",
-          "Butter",
-          "Cheese",
-          "Cream",
-          "Bread",
-          "Eggs",
-          "Masala",
-          "Vegetables",
-          "Fruits",
-          "Detergent",
-          "Dishwash",
-          "Toilet Cleaner",
-          "Skincare",
-          "Haircare",
-          "Baby Care",
-          "Body Wash"
-        ],
-        "nonEssentials": [
-          "Snacks",
-          "Chips",
-          "Namkeen",
-          "Biscuits",
-          "Cookies",
-          "Chocolates",
-          "Ice Cream",
-          "Sweets",
-          "Cold Drinks",
-          "Juice",
-          "Tea",
-          "Coffee",
-          "Instant Food",
-          "Dry Fruits",
-          "Cake"
-        ]
-      }
+      "minDiscount": 45,
+      "subcategories": [
+        { "category": "Atta, Rice and Dal", "name": "Atta", "id": "6903b01ed2c61b000112ba2c", "taxonomyType": "taxonomy 5" },
+        { "category": "Atta, Rice and Dal", "name": "Rice", "id": "6903b01ed2c61b000112ba2d", "taxonomyType": "taxonomy 5" },
+        { "category": "Atta, Rice and Dal", "name": "Toor, Moong and Urad", "id": "6903b01ed2c61b000112ba31", "taxonomyType": "taxonomy 5" },
+        { "category": "Oils and Ghee", "name": "Sunflower Oils", "id": "69394956ed899c0001b1aed8", "taxonomyType": "taxonomy 5" },
+        { "category": "Oils and Ghee", "name": "Ghee", "id": "69392fc99bd17b000135e3bb", "taxonomyType": "taxonomy 5" },
+        { "category": "Masalas", "name": "Whole Spices", "id": "693ad23e53de7a00011ff898", "taxonomyType": "taxonomy 5" },
+        { "category": "Masalas", "name": "Powdered Spices", "id": "693ad23e53de7a00011ff894", "taxonomyType": "taxonomy 5" },
+        { "category": "Tea, Coffee and Milk drinks", "name": "Tea", "id": "6903b0c295d8230001064cfa", "taxonomyType": "taxonomy 10" },
+        { "category": "Tea, Coffee and Milk drinks", "name": "Instant Coffee", "id": "6903b0c295d8230001064cfb", "taxonomyType": "taxonomy 10" },
+        { "category": "Cleaners and Repellents", "name": "Liquid Detergents", "id": "6903b179fe6d7500013a0d33", "taxonomyType": "IM Meatsy" },
+        { "category": "Cleaners and Repellents", "name": "Detergent Powders", "id": "6903b179fe6d7500013a0d32", "taxonomyType": "IM Meatsy" },
+        { "category": "Cleaners and Repellents", "name": "Dishwash Gel", "id": "6903b179fe6d7500013a0d3c", "taxonomyType": "IM Meatsy" },
+        { "category": "Cleaners and Repellents", "name": "Floor Cleaners", "id": "6903b179fe6d7500013a0d35", "taxonomyType": "IM Meatsy" },
+        { "category": "Bath and Body", "name": "Soaps", "id": "6903b10bd2c61b000112ba93", "taxonomyType": "taxonomy 14" },
+        { "category": "Hair Care", "name": "Shampoo", "id": "6903b10bd2c61b000112baae", "taxonomyType": "taxonomy 14" },
+        { "category": "Hair Care", "name": "Hair Oils and Serums", "id": "6903b10bd2c61b000112baad", "taxonomyType": "taxonomy 14" },
+        { "category": "Skincare", "name": "Face wash and scrubs", "id": "6903b10bd2c61b000112bab8", "taxonomyType": "taxonomy 14" },
+        { "category": "Skincare", "name": "Creams & Moisturizers", "id": "6903b10bd2c61b000112babb", "taxonomyType": "taxonomy 14" },
+        { "category": "Feminine Hygiene", "name": "Sanitary Pads", "id": "6903b10bd2c61b000112bacc", "taxonomyType": "taxonomy 14" }
+      ]
     },
     "wednesdayBazaar": {
       "name": "Wednesday Bazaar",
