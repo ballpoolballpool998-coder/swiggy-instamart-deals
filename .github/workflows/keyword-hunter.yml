@@ -11,7 +11,7 @@ on:
         description: 'Skip top-of-hour wait sync (run immediately)'
         type: boolean
         required: false
-        default: true
+        default: false
 
 jobs:
   hunt:
