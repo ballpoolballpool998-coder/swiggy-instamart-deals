@@ -7,9 +7,10 @@
     "start": "node src/bot.js",
     "cron": "node src/cron-runner.js",
     "server": "node src/server.js",
-    "test:keywords": "node src/test-run.js keywords",
-    "test:noice": "node src/test-run.js noice",
-    "test:bazaar": "node src/test-run.js bazaar"
+    "test:essentials": "node src/cron-runner.js essentials --skip-sync",
+    "test:treats": "node src/cron-runner.js treats --skip-sync",
+    "test:lifestyle": "node src/cron-runner.js lifestyle --skip-sync",
+    "test:bazaar": "node src/cron-runner.js bazaar --skip-sync"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

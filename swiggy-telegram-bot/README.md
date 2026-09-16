@@ -1,112 +1,41 @@
-# ⚡ Swiggy Instamart Deal Alert Bot (Telegram)
+# 🤖 Swiggy Instamart Deal Hunter (Telegram Bot)
 
-An automated Telegram bot and crawler that tracks **Keyword Deals** (Grocery Essentials & Snacks) and **Wednesday Bazaar** on Swiggy Instamart, alerting you immediately to high-discount flash deals, price drops, and restocks.
+The Telegram bot component of the [Swiggy Instamart Deal Hunter Suite](../README.md).
 
----
-
-## 🎯 Tiered Discount Thresholds
-
-- 🥛 **Grocery Essentials (≥ 65% OFF)**: Dairy (Milk, Curd, Butter, Paneer), Staples (Atta, Rice, Dal), Oils & Ghee, Masalas, Cleaning (Detergents, Dishwash, Toilet Cleaners), Personal Care (Skincare, Haircare, Baby Care).
-- 🍿 **Snacks & Treats (≥ 75% OFF)**: Chips, Namkeens, Biscuits, Cookies, Chocolates, Sweets, Cold Drinks, Instant Foods.
-- 🛍️ **Wednesday Bazaar (≥ 50% OFF)**: Weekly midnight top deals catalog.
-
-All thresholds and search queries are fully customizable in `config.json`.
+For complete documentation, architecture diagrams, and setup instructions, please see the [Main Project README](../README.md).
 
 ---
 
-## 📅 Configured Schedules (IST)
+## ⚡ Quick CLI Commands
 
-- **Keyword Deal Hunter**: Runs **every hour between 10:00 AM and 9:05 PM** (`5 10-21 * * *`).
-- **Wednesday Bazaar**: Runs **every Wednesday at 12:02 AM** (`2 0 * * 3`).
+```bash
+# Install dependencies
+npm install
 
----
+# Test Worker 1: Daily Essentials & Fresh (37 aisles)
+npm run test:essentials
 
-## 🚀 High-Efficiency Early-Exit Search Architecture
+# Test Worker 2: Sweets, Snacks & Treats (41 aisles)
+npm run test:treats
 
-Instead of crawling 50+ individual subcategories (which takes minutes and causes rate limits), the bot uses Swiggy's search endpoint with `sortAttribute: "discountPercentHighToLow"`:
-1. Queries each keyword with high-to-low discount ordering.
-2. If the maximum discount on Page 1 is below the category threshold (65% or 75%), it **immediately exits** and moves to the next keyword without paginating further.
-3. Total scan across ~29 keywords finishes in only **~12–15 seconds** with negligible API load.
+# Test Worker 3: Lifestyle, Home & Electronics (32 aisles)
+npm run test:lifestyle
 
----
+# Test Wednesday Bazaar Deals (Runs automatically at 12:00 AM on Wednesdays)
+npm run test:bazaar
 
-## 📱 24/7 Hosting Options
+# Start interactive bot polling daemon
+npm start
+```
 
-### 🌟 Option 1: Mobile Phone (Termux + PM2) — Recommended Free Setup
-Running on an Android phone gives you an authentic **Indian residential / mobile IP** (Jio/Airtel), bypassing cloud datacenter blocks completely.
+## ⚙️ Environment Variables
 
-1. Install **Termux** from [F-Droid](https://f-droid.org/packages/com.termux/).
-2. In Termux:
-   ```bash
-   pkg update && pkg upgrade -y
-   pkg install nodejs-lts git -y
-   npm install -g pm2
-   termux-wake-lock
-   ```
-3. Copy or clone the project folder, install dependencies, and start:
-   ```bash
-   cd swiggy-telegram-bot
-   npm install
-   pm2 start src/bot.js --name "swiggy-bot"
-   pm2 save
-   ```
-
----
-
-### 🌐 Option 2: GitHub Actions Matrix (3 Parallel Runner VMs)
-A workflow is configured in `.github/workflows/keyword-hunter.yml`:
-- Runs automatically every hour via GitHub Actions cron.
-- Uses `matrix: chunk: [0, 1, 2]` to run 3 parallel runner VMs, each processing 1/3 of the keywords simultaneously.
-- Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and optional `SWIGGY_COOKIE` in your GitHub Repository Secrets.
-
----
-
-### 💻 Option 3: Local PC (Windows / Mac / Linux)
-1. In `swiggy-telegram-bot/`, ensure `.env` has your `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
-2. Start the interactive bot:
-   ```bash
-   npm start
-   ```
-
----
-
-## 🤖 Interactive Telegram Commands
-
-- `/start` — Show welcome message & menu
-- `/categories` — Browse and scan specific grocery departments on demand (≥50% OFF)
-- `/bazaar` — Scan Wednesday Bazaar Top Deals (≥50% OFF)
-- `/pincode <6-digits>` — Set your delivery pincode (e.g. `/pincode 560038`)
-- `/setstore <storeId> [secId]` — Link your exact Swiggy dark store pod ID
-- `/myinfo` — View your configured location and active store
-- `/status` — View last Keyword Hunter and Bazaar scan stats
-- `/noice` — View information about the automated hourly keyword scanner
-
----
-
-## 🧪 Testing & Verification
-
-- **Test Keyword Deals**:
-  ```bash
-  npm run test:keywords
-  ```
-- **Test Specific Chunk (1 of 3)**:
-  ```bash
-  node src/cron-runner.js keywords --chunk 0 --total-chunks 3
-  ```
-- **Test Wednesday Bazaar**:
-  ```bash
-  npm run test:bazaar
-  ```
-- **Run Single-Shot Cron**:
-  ```bash
-  npm run cron
-  ```
-
----
-
-## 🔖 Standalone Browser Bookmarklets
-
-For scanning deals directly in your browser without running Node.js or Telegram:
-1. Open `index.html` in your browser (or visit your GitHub Pages URL).
-2. Drag either or both buttons (**Keyword Deal Hunter** and **Category Scout**) to your bookmarks bar.
-3. Visit [swiggy.com/instamart](https://www.swiggy.com/instamart) and click the bookmark anytime you want to shop.
+Create `.env` based on `.env.example`:
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here
+MIN_DISCOUNT_PERCENT=70
+SWIGGY_STORE_ID=1400216
+SWIGGY_PRIMARY_STORE_ID=1400216
+SWIGGY_SECONDARY_STORE_ID=1231805
+```
