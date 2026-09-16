@@ -4,7 +4,7 @@
     "pid": "1400216",
     "secid": "1231805"
   },
-  "minDiscount": 45,
+  "minDiscount": 70,
   "campaigns": {
     "essentialAisles": {
       "name": "Essential Aisles Deal Hunter",
@@ -12,7 +12,7 @@
       "enabled": true,
       "cron": "27 3-16 * * *",
       "description": "Hourly between 9:00 AM and 10:00 PM IST",
-      "minDiscount": 45,
+      "minDiscount": 70,
       "subcategories": [
         { "category": "Atta, Rice and Dal", "name": "Atta", "id": "6903b01ed2c61b000112ba2c", "taxonomyType": "taxonomy 5" },
         { "category": "Atta, Rice and Dal", "name": "Rice", "id": "6903b01ed2c61b000112ba2d", "taxonomyType": "taxonomy 5" },

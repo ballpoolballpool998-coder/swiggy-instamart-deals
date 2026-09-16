@@ -9,7 +9,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const chatId = process.env.TELEGRAM_CHAT_ID;
-const minDiscount = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || config.minDiscount || 45;
+const minDiscount = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || config.minDiscount || 70;
 
 const storeConfig = {
   sid: process.env.SWIGGY_STORE_ID || config.store.sid,
@@ -108,7 +108,7 @@ async function main() {
   }
 
   const essentialConfig = config.campaigns?.essentialAisles || {};
-  const essentialThreshold = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || essentialConfig.minDiscount || minDiscount || 45;
+  const essentialThreshold = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || essentialConfig.minDiscount || minDiscount || 70;
 
   if (shouldRunEssentials) {
     console.log(`\n--- Running Essential Aisles Scout (19 Subcategories) ---`);
