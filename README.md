@@ -27,7 +27,7 @@ The Deal Scout bookmarklet injects a floating control panel on [swiggy.com/insta
 
 ### 🚀 Quick Installation
 1. Visit the GitHub Pages setup portal:
-   👉 **`https://<your-username>.github.io/<repo-name>/`**
+   👉 **`https://jairaj26.github.io/swiggy-instamart-deals/`**
 2. Drag the **"🛒 Swiggy Deal Scout"** button directly to your browser's Bookmarks bar.
 3. *Alternative (Manual)*:
    - Create a new browser bookmark.
@@ -100,7 +100,7 @@ In your GitHub repository, navigate to **Settings** → **Secrets and variables*
 
 Clone the repository and enter the bot folder:
 ```bash
-git clone https://github.com/<your-username>/<repo-name>.git
+git clone https://github.com/jairaj26/swiggy-instamart-deals.git
 cd swiggy-telegram-bot
 npm install
 ```
