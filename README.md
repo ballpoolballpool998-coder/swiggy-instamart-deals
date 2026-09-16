@@ -25,22 +25,35 @@ A comprehensive toolkit for discovering hidden deals, clearance discounts, and h
 
 The Deal Scout bookmarklet injects a floating control panel on [swiggy.com/instamart](https://www.swiggy.com/instamart), allowing you to scout specific aisles on demand without getting rate-limited.
 
-### 🚀 Quick Installation
+### 🚀 Desktop Installation & Usage (Chrome, Edge, Brave, Safari, Firefox)
 1. Visit the GitHub Pages setup portal:
-   👉 **`https://jairaj26.github.io/swiggy-instamart-deals/`**
-2. Drag the **"🛒 Swiggy Deal Scout"** button directly to your browser's Bookmarks bar.
-3. *Alternative (Manual)*:
-   - Create a new browser bookmark.
-   - Name it `Swiggy Deal Scout`.
-   - Copy the one-line code from [`swiggy-hunter-v4.bookmarklet.txt`](swiggy-hunter-v4.bookmarklet.txt) and paste it into the **URL / Location** field.
+   👉 **[https://jairaj26.github.io/swiggy-instamart-deals/](https://jairaj26.github.io/swiggy-instamart-deals/)**
+2. Show your browser bookmarks bar (<kbd>Ctrl+Shift+B</kbd> on Windows or <kbd>Cmd+Shift+B</kbd> on Mac).
+3. Drag the orange **"🛒 Swiggy Deal Scout"** button directly to your browser's Bookmarks bar.
+4. Open **[swiggy.com/instamart](https://www.swiggy.com/instamart)** and click the bookmark anytime you want to scout deals.
+5. Pick your category and subcategories, then click **Fetch**!
 
-### 📖 How to Use
-1. Navigate to [swiggy.com/instamart](https://www.swiggy.com/instamart) and ensure your delivery location is set.
-2. Click the **Swiggy Deal Scout** bookmarklet from your bookmarks bar.
-3. Choose a category (e.g. *Atta, Rice & Dal*, *Dairy, Bread & Eggs*, *Chips & Namkeens*):
-   - You can fetch all subcategories in that category at once (`Fetch All`), or
-   - Toggle individual subcategory chips (e.g. only *Atta* and *Rice*).
-4. View live results sorted by highest discount with direct product links!
+---
+
+### 📱 Mobile Installation & Usage (Chrome, Safari, Brave on Android & iOS)
+Since mobile browsers do not feature drag-and-drop bookmark bars, set up the bookmarklet in 4 quick steps:
+
+1. **Copy the code**:
+   - Open the setup portal on your phone: 👉 **[https://jairaj26.github.io/swiggy-instamart-deals/](https://jairaj26.github.io/swiggy-instamart-deals/)**
+   - Scroll down to the **"Or click to preview / copy script below"** drawer and tap **Copy Script** (or copy from [`swiggy-hunter-v4.bookmarklet.txt`](swiggy-hunter-v4.bookmarklet.txt)).
+2. **Create a temporary bookmark**:
+   - Tap the browser menu (<kbd>⋮</kbd> on Android or Share icon on iOS) and tap **⭐ / Add Bookmark** to bookmark this page.
+3. **Edit the bookmark**:
+   - Open your browser's **Bookmarks** list.
+   - Tap the <kbd>⋮</kbd> menu next to the new bookmark and select **Edit**.
+   - Change the **Name** to `Swiggy Deal Scout`.
+   - Clear the **URL** field and paste the copied `javascript:...` code. Save changes.
+4. **How to run on Mobile**:
+   - Navigate to **[swiggy.com/instamart](https://www.swiggy.com/instamart)** and ensure your delivery location is set.
+   - Tap your browser's **address / search bar** (URL bar) at the top.
+   - Type `Swiggy Deal Scout`.
+   - In the dropdown search recommendations, tap the **bookmark icon** named **Swiggy Deal Scout**.
+   - The Deal Scout overlay will open directly over the mobile page!
 
 ---
 
@@ -84,9 +97,21 @@ In your GitHub repository, navigate to **Settings** → **Secrets and variables*
 | :--- | :--- | :--- |
 | `TELEGRAM_BOT_TOKEN` | Your Telegram Bot token from BotFather | Required |
 | `TELEGRAM_CHAT_ID` | Your Telegram User ID or Channel ID | Required |
-| `SWIGGY_STORE_ID` | Your local dark store pod ID (e.g. `1400216`) | Default: `1400216` |
-| `SWIGGY_PRIMARY_STORE_ID` | Primary store ID (usually same as store ID) | Default: `1400216` |
-| `SWIGGY_SECONDARY_STORE_ID` | Secondary fallback store ID (e.g. `1231805`) | Default: `1231805` |
+| `SWIGGY_STORE_ID` | Your local dark store pod ID | Required |
+| `SWIGGY_PRIMARY_STORE_ID` | Primary store ID (same as `SWIGGY_STORE_ID`) | Required |
+| `SWIGGY_SECONDARY_STORE_ID` | Secondary fallback store ID (if available in URL) | Optional |
+
+#### 🔍 How to Find Your Store IDs:
+1. Navigate to **[swiggy.com/instamart](https://www.swiggy.com/instamart)** in your browser and confirm your delivery location/address is selected.
+2. Click on **any category** (e.g. *Atta, Rice & Dal* or *Dairy, Bread & Eggs*).
+3. Check your browser address bar URL. It will look like this:
+   ```
+   https://www.swiggy.com/instamart/category-listing?storeId=1400216&primaryStoreId=1400216&secondaryStoreId=1231805...
+   ```
+4. Extract the IDs directly from the URL:
+   - `storeId` is your **`SWIGGY_STORE_ID`**.
+   - `primaryStoreId` is your **`SWIGGY_PRIMARY_STORE_ID`** *(Store ID and Primary ID are identical)*.
+   - `secondaryStoreId` is your **`SWIGGY_SECONDARY_STORE_ID`** *(Copy if present; if not shown in your location's URL, you can leave it blank)*.
 
 *(Note: `SWIGGY_COOKIE` and `SWIGGY_DEVICE_ID` are optional; direct API requests automatically generate authentic device headers and signatures).*
 
@@ -110,9 +135,13 @@ Create a `.env` file (see `.env.example`):
 TELEGRAM_BOT_TOKEN=your_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
 MIN_DISCOUNT_PERCENT=70
-SWIGGY_STORE_ID=1400216
-SWIGGY_PRIMARY_STORE_ID=1400216
-SWIGGY_SECONDARY_STORE_ID=1231805
+
+# Add your Store ID and Primary Store ID (both are identical numbers from your category URL)
+SWIGGY_STORE_ID=your_store_id_here
+SWIGGY_PRIMARY_STORE_ID=your_store_id_here
+
+# Add your Secondary Store ID if available in your category URL (otherwise leave blank)
+SWIGGY_SECONDARY_STORE_ID=your_secondary_store_id_here
 ```
 
 Run test scans for each worker:
