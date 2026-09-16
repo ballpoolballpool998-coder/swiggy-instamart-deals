@@ -4,18 +4,21 @@ javascript:(async () => {
   /* ==========================================================================
      INSTAMART HUNTER v4 — Category & Subcategory Scout
      
-     Updates:
-     1. Complete 36 Instamart Categories with all subcategories pre-populated:
-        - 100% of subcategories and filter IDs pre-mapped directly from live dark store.
-     2. Granular Subcategory Selection:
-        - Choose an entire category or cherry-pick specific subcategories (e.g. Atta & Rice).
-        - Selective fetching finishes in 1–3 seconds with ZERO 429 rate limit risk.
-     3. Subcategories Visible by Default:
-        - Subcategories are prominently displayed under each category card by default.
-     4. Single-Category Rule:
-        - Users focus on one category at a time for optimal dark store accuracy.
-     5. Standalone Results Tab:
-        - Instant responsive table with filter, search, sorting, and Swiggy links.
+     Features:
+     1. Complete 36 Instamart Categories with 110+ subcategories pre-mapped.
+     2. Collapsed Subcategories by Default:
+        - Categories can be expanded/collapsed with a smooth chevron toggle.
+        - Auto-expands on search or when picking subcategories.
+     3. Granular Selection:
+        - Cherry-pick specific aisles (e.g. Atta, Ghee) or select all aisles.
+     4. Zepto-Style 5-Column Product Grid in Results:
+        - Green discount badge in top-left corner.
+        - Centered product image.
+        - Brand, product title, pack description, selling price, and MRP.
+        - Direct search links to Swiggy Instamart on click.
+     5. Multi-Filter Controls:
+        - Subcategory filter, Brand filter, and instant live search.
+        - Sorting options (Discount %, Savings ₹, Price Low/High, Name).
      ========================================================================== */
 
   const CFG = {
@@ -2212,7 +2215,7 @@ javascript:(async () => {
       performance.getEntries().forEach((e) => {
         const u = e.name;
         if (u.includes('storeId=')) {
-          const m = u.match(/storeId=(d+)/);
+          const m = u.match(/storeId=(\d+)/);
           if (m) ids.add(m[1]);
           const p = new URLSearchParams(u.split('?')[1]);
           if (p.get('primaryStoreId')) ids.add(p.get('primaryStoreId'));
@@ -2220,28 +2223,35 @@ javascript:(async () => {
         }
       });
     } catch (e) {}
-
     try {
       for (let i = 0; i < localStorage.length; i++) {
-        const val = localStorage.getItem(localStorage.key(i));
-        if (typeof val === 'string') {
-          const m = val.match(/"(?:storeId|primaryStoreId)":\s*"?(\d+)"?/);
+        const k = localStorage.key(i);
+        const v = localStorage.getItem(k);
+        if (typeof v === 'string') {
+          const m = v.match(/"(?:storeId|primaryStoreId)":\s*"?(\d+)"?/);
           if (m && m[1].length > 4) ids.add(m[1]);
         }
       }
     } catch (e) {}
 
-    let arr = Array.from(ids).filter((i) => i.length > 4);
-    if (!arr.length) {
+    let arr = Array.from(ids).filter((id) => id.length > 4);
+    if (arr.length === 0) {
       const manual = prompt('Could not auto-detect store ID. Paste your storeId (from Network tab):', '');
-      if (manual) arr = manual.split(',').map((s) => s.trim()).filter(Boolean);
+      if (manual) {
+        arr = manual.split(',').map((s) => s.trim()).filter(Boolean);
+      }
     }
+
     if (!arr.length) return null;
-    return { sid: arr[0], pid: arr[0], secid: arr[1] || '' };
+    return {
+      sid: arr[0],
+      pid: arr[0],
+      secid: arr[1] || ''
+    };
   }
 
   /* ==========================================================================
-     Dynamic API Engine (GET & POST with Auto-Cooldown Backoff)
+     Safe API Request Pipeline with Adaptive Anti-429 Cooldown
      ========================================================================== */
 
   let activeDispatch = null;
@@ -2363,6 +2373,7 @@ javascript:(async () => {
         rating: v.rating?.value ? `${v.rating.value} ★` : null,
         ratingCount: v.rating?.count || null,
         imageUrl,
+        image: imageId,
         searchLink: `https://www.swiggy.com/instamart/search?custom_back=true&query=${encodeURIComponent(name)}`
       };
 
@@ -2377,8 +2388,8 @@ javascript:(async () => {
     return { scanned, maxDiscount, itemsFound, itemsList };
   }
 
-  async function fetchSubcategoryDeals(catKey, catObj, sub, storeIds, resultMap, progressCb, isRetry = false) {
-    progressCb?.(`Fetching ${catObj.cName} > ${sub.name} (Page 1)…`);
+  async function fetchSubcategoryDeals(catKey, catObj, sub, storeIds, resultMap, onProgress, isRetry = false) {
+    onProgress?.(`Fetching ${catObj.cName} > ${sub.name} (Page 1)…`);
 
     let url = '';
     let body = null;
@@ -2392,98 +2403,100 @@ javascript:(async () => {
         filterName: sub.name,
         filterId: sub.id,
         taxonomyType: catObj.tType || 'taxonomy 5',
-        items_offset: "0",
+        items_offset: '0',
         facets: [],
-        sortAttribute: "discountPercentHighToLow",
+        sortAttribute: 'discountPercentHighToLow'
       };
     } else {
       method = 'GET';
       url = `https://www.swiggy.com/api/instamart/category-listing/v2?categoryName=${encodeURIComponent(catObj.cName)}&taxonomyType=${encodeURIComponent(catObj.tType)}&offset=0&storeId=${storeIds.sid}&primaryStoreId=${storeIds.pid}&secondaryStoreId=${storeIds.secid}`;
     }
 
-    const p1Data = await apiRequestSafe(url, method, body, isRetry);
-    if (!p1Data || !p1Data.data) {
+    const data = await apiRequestSafe(url, method, body, isRetry);
+    if (!data || !data.data) {
       return { ok: false, failed: true, scanned: 0, maxDiscount: 0, itemsFound: 0 };
     }
 
-    const p1Res = parseCardsVariations(p1Data, catKey, catObj, sub, storeIds, resultMap);
-    let totalScanned = p1Res.scanned;
-    let maxDiscount = p1Res.maxDiscount;
-    let itemsFound = p1Res.itemsFound;
+    const parsed = parseCardsVariations(data, catKey, catObj, sub, storeIds, resultMap);
+    let scanned = parsed.scanned;
+    let maxDiscount = parsed.maxDiscount;
+    let itemsFound = parsed.itemsFound;
     let fetchedPage2 = false;
 
-    // Smart Page 2 expansion if Page 1 deals are exceptionally deep (>50%)
-    const p1Items = p1Res.itemsList;
-    const lastP1Item = p1Items.length > 0 ? p1Items[p1Items.length - 1] : null;
+    // Smart Page 2 Expansion: If Page 1 has 15+ items and the lowest discount > 50%, grab Page 2
+    const items = parsed.itemsList;
+    const lastItem = items.length > 0 ? items[items.length - 1] : null;
 
-    if (sub.id && p1Items.length >= 15 && lastP1Item && lastP1Item.discount > 50) {
-      progressCb?.(`Last item on Page 1 is ${lastP1Item.discount}% OFF (>50%) — fetching Page 2…`);
-      const pauseMs = isRetry
-        ? (CFG.pacing.subMin + Math.floor(Math.random() * (CFG.pacing.subMax - CFG.pacing.subMin)))
+    if (sub.id && items.length >= 15 && lastItem && lastItem.discount > 50) {
+      onProgress?.(`Last item on Page 1 is ${lastItem.discount}% OFF (>50%) — fetching Page 2…`);
+      const p2Delay = isRetry
+        ? CFG.pacing.subMin + Math.floor(Math.random() * (CFG.pacing.subMax - CFG.pacing.subMin))
         : 150;
-      await sleep(pauseMs);
+      await sleep(p2Delay);
 
-      const p2Url = `https://www.swiggy.com/api/instamart/category-listing/filter/v2?storeId=${storeIds.sid}&primaryStoreId=${storeIds.pid}&secondaryStoreId=${storeIds.secid}&pageNo=1&offset=1&page_name=category_listing_filter`;
-      const p2Body = {
+      const url2 = `https://www.swiggy.com/api/instamart/category-listing/filter/v2?storeId=${storeIds.sid}&primaryStoreId=${storeIds.pid}&secondaryStoreId=${storeIds.secid}&pageNo=1&offset=1&page_name=category_listing_filter`;
+      const body2 = {
         categoryName: catObj.cName,
         filterName: sub.name,
         filterId: sub.id,
         taxonomyType: catObj.tType || 'taxonomy 5',
         items_offset: String(CFG.itemsPerPage),
         facets: [],
-        sortAttribute: "discountPercentHighToLow",
+        sortAttribute: 'discountPercentHighToLow'
       };
-      const p2Data = await apiRequestSafe(p2Url, 'POST', p2Body, isRetry);
-      if (p2Data && p2Data.data) {
-        const p2Res = parseCardsVariations(p2Data, catKey, catObj, sub, storeIds, resultMap);
-        totalScanned += p2Res.scanned;
-        maxDiscount = Math.max(maxDiscount, p2Res.maxDiscount);
-        itemsFound += p2Res.itemsFound;
+
+      const data2 = await apiRequestSafe(url2, 'POST', body2, isRetry);
+      if (data2 && data2.data) {
+        const parsed2 = parseCardsVariations(data2, catKey, catObj, sub, storeIds, resultMap);
+        scanned += parsed2.scanned;
+        maxDiscount = Math.max(maxDiscount, parsed2.maxDiscount);
+        itemsFound += parsed2.itemsFound;
         fetchedPage2 = true;
       }
     }
 
-    return { ok: true, failed: false, scanned: totalScanned, maxDiscount, itemsFound, fetchedPage2 };
+    return { ok: true, failed: false, scanned, maxDiscount, itemsFound, fetchedPage2 };
   }
 
-  async function fetchCampaignDeals(catKey, catObj, storeIds, resultMap, progressCb) {
-    let totalScanned = 0;
-    let overallMaxDiscount = 0;
+  async function fetchCampaignDeals(catKey, catObj, storeIds, resultMap, onProgress) {
+    let scanned = 0;
+    let maxDiscount = 0;
     let itemsFound = 0;
-    let offset = 0;
+    let page = 0;
     let hasMore = true;
 
-    while (hasMore && offset < 6) {
-      progressCb?.(`Fetching ${catObj.cName} (Page ${offset + 1})…`);
+    while (hasMore && page < 6) {
+      onProgress?.(`Fetching ${catObj.cName} (Page ${page + 1})…`);
+
       let url = '';
       if (catObj.campaignType === 'mxn') {
-        url = `https://www.swiggy.com/api/instamart/campaign/mxn/v2?layoutId=${catObj.layoutId}&offset=${offset}&customerPage=STORES_MxN_3&metaInfo=&storeId=${storeIds.sid}&primaryStoreId=${storeIds.pid}&secondaryStoreId=${storeIds.secid}`;
+        url = `https://www.swiggy.com/api/instamart/campaign/mxn/v2?layoutId=${catObj.layoutId}&offset=${page}&customerPage=STORES_MxN_3&metaInfo=&storeId=${storeIds.sid}&primaryStoreId=${storeIds.pid}&secondaryStoreId=${storeIds.secid}`;
       } else if (catObj.campaignType === 'collection') {
-        url = `https://www.swiggy.com/api/instamart/collection/items?collectionId=${catObj.collectionId}&isMonetised=true&storeId=${storeIds.sid}&primaryStoreId=${storeIds.pid}&secondaryStoreId=${storeIds.secid}&offset=${offset}&serviceLine=INSTAMART`;
+        url = `https://www.swiggy.com/api/instamart/collection/items?collectionId=${catObj.collectionId}&isMonetised=true&storeId=${storeIds.sid}&primaryStoreId=${storeIds.pid}&secondaryStoreId=${storeIds.secid}&offset=${page}&serviceLine=INSTAMART`;
       }
 
-      const json = await apiRequestSafe(url, 'GET', null, true);
-      if (!json || !json.data) break;
+      const data = await apiRequestSafe(url, 'GET', null, true);
+      if (!data || !data.data) break;
 
-      const res = parseCardsVariations(json, catKey, catObj, { name: catObj.cName, id: '' }, storeIds, resultMap);
-      totalScanned += res.scanned;
-      itemsFound += res.itemsFound;
-      overallMaxDiscount = Math.max(overallMaxDiscount, res.maxDiscount);
+      const parsed = parseCardsVariations(data, catKey, catObj, { name: catObj.cName, id: '' }, storeIds, resultMap);
+      scanned += parsed.scanned;
+      itemsFound += parsed.itemsFound;
+      maxDiscount = Math.max(maxDiscount, parsed.maxDiscount);
 
-      const nextOffset = json.data?.pageOffset?.nextOffset;
-      if (nextOffset !== null && nextOffset !== undefined && nextOffset !== '' && Number(nextOffset) > offset) {
-        offset = Number(nextOffset);
+      const nextOffset = data.data?.pageOffset?.nextOffset;
+      if (nextOffset !== undefined && nextOffset !== '' && Number(nextOffset) > page) {
+        page = Number(nextOffset);
         await sleep(200);
       } else {
         hasMore = false;
       }
     }
 
-    return { scanned: totalScanned, maxDiscount: overallMaxDiscount, itemsFound, fetchedPage2: offset > 0 };
+    return { scanned, maxDiscount, itemsFound, fetchedPage2: page > 0 };
   }
 
   /* ==========================================================================
-     UI Construction (Granular Subcategory Selector & Single-Category Panel)
+     In-Browser Floating Overlay UI (Side Panel)
      ========================================================================== */
 
   document.getElementById('ih4-root')?.remove();
@@ -2509,7 +2522,7 @@ javascript:(async () => {
     }
 
     #ih4-panel {
-      position: fixed; top: 0; right: 0; height: 100vh; width: 440px; max-width: 96vw;
+      position: fixed; top: 0; right: 0; height: 100vh; width: 450px; max-width: 96vw;
       background: #fff; box-shadow: -8px 0 35px rgba(15,23,42,.15); border-left: 1px solid #e2e8f0;
       display: flex; flex-direction: column; transform: translateX(100%); transition: transform .22s ease;
       z-index: 2147483001;
@@ -2563,7 +2576,7 @@ javascript:(async () => {
     
     .ih4-cat-radio {
       width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #cbd5e1; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center; transition: all .12s ease; background: #fff;
+      display: flex; align-items: center; justify-content: center; transition: all .12s ease; background: #fff; cursor: pointer;
     }
     .ih4-radio-dot {
       width: 8px; height: 8px; border-radius: 50%; background: #fc8019; opacity: 0; transform: scale(0.6);
@@ -2573,15 +2586,25 @@ javascript:(async () => {
     .ih4-cat-card.selected .ih4-radio-dot { opacity: 1; transform: scale(1); }
     
     .ih4-cat-name { font-size: 13.5px; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ih4-cat-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
     .ih4-cat-badge {
       font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: #f1f5f9; color: #475569;
-      margin-left: auto; flex-shrink: 0;
     }
     .ih4-cat-card.selected .ih4-cat-badge { background: #ea580c; color: #fff; font-weight: 700; }
+    .ih4-chevron {
+      width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #64748b; transition: transform .2s ease;
+    }
+    .ih4-cat-card.expanded .ih4-chevron {
+      transform: rotate(180deg);
+    }
 
-    /* Subcategories Box (Visible by default) */
+    /* Subcategories Box (Collapsed by default, expanded on toggle) */
     .ih4-subs-box {
-      display: block; padding: 10px 12px 12px; border-top: 1px dashed #e2e8f0; background: #fafbfc;
+      display: none; padding: 10px 12px 12px; border-top: 1px dashed #e2e8f0; background: #fafbfc;
+    }
+    .ih4-cat-card.expanded .ih4-subs-box {
+      display: block;
     }
     .ih4-cat-card.selected .ih4-subs-box { background: #fffaf5; border-top-color: #fed7aa; }
 
@@ -2689,9 +2712,10 @@ javascript:(async () => {
   let finalItemsCache = [];
   let latestMetaCache = null;
 
-  // Single-Category Selection State:
+  // Single-Category Selection State & Accordion State:
   let selectedCat = null;
-  let selectedSubs = new Set(); // Set of subcategory IDs or names
+  let selectedSubs = new Set();
+  const expandedCats = new Set(); // Categories currently expanded by the user
   let currentSection = 'All';
   let filterQuery = '';
 
@@ -2748,9 +2772,11 @@ javascript:(async () => {
       const subs = catObj.subs || [];
 
       // Filter by search query if typed
+      let catMatch = false;
+      let subMatch = false;
       if (q) {
-        const catMatch = cleanCatName.toLowerCase().includes(q);
-        const subMatch = subs.some(s => s.name.toLowerCase().includes(q));
+        catMatch = cleanCatName.toLowerCase().includes(q);
+        subMatch = subs.some(s => s.name.toLowerCase().includes(q));
         if (!catMatch && !subMatch) continue;
       }
 
@@ -2758,37 +2784,51 @@ javascript:(async () => {
       const isSelectedCat = selectedCat === catKey;
       const countSelected = isSelectedCat ? selectedSubs.size : 0;
       const totalSubs = subs.length;
+      const isExpanded = expandedCats.has(catKey) || (Boolean(q) && (catMatch || subMatch));
 
       const card = document.createElement('div');
-      card.className = `ih4-cat-card${isSelectedCat ? ' selected' : ''}`;
+      card.className = `ih4-cat-card${isSelectedCat ? ' selected' : ''}${isExpanded ? ' expanded' : ''}`;
 
-      // Header
+      // Header with Radio Button, Title, Badge & Expand Chevron
       const header = document.createElement('div');
       header.className = 'ih4-cat-main';
       header.innerHTML = `
         <div class="ih4-cat-left">
-          <span class="ih4-cat-radio"><span class="ih4-radio-dot"></span></span>
+          <span class="ih4-cat-radio" title="Select all aisles in ${cleanCatName}"><span class="ih4-radio-dot"></span></span>
           <span class="ih4-cat-name">${catKey}</span>
         </div>
-        <span class="ih4-cat-badge">${isSelectedCat ? (`${countSelected}/${totalSubs} selected`) : (`${totalSubs} aisles`)}</span>
+        <div class="ih4-cat-right">
+          <span class="ih4-cat-badge">${isSelectedCat ? (`${countSelected}/${totalSubs} selected`) : (`${totalSubs} aisles`)}</span>
+          <span class="ih4-chevron">▼</span>
+        </div>
       `;
 
-      // Clicking header selects whole category
-      header.addEventListener('click', () => {
+      // Clicking the radio button: selects/deselects whole category and expands
+      header.querySelector('.ih4-cat-radio').addEventListener('click', (e) => {
+        e.stopPropagation();
         if (selectedCat === catKey && selectedSubs.size === totalSubs) {
-          // Already fully selected -> clear
           selectedCat = null;
           selectedSubs.clear();
         } else {
-          // Switch to this category and select all subcategories
           selectedCat = catKey;
           selectedSubs = new Set(subs.map(s => s.id || s.name));
+          expandedCats.add(catKey);
         }
         renderCategories();
         updateFooter();
       });
 
-      // Subcategories Box (Visible by default)
+      // Clicking anywhere on header: toggles accordion expansion
+      header.addEventListener('click', () => {
+        if (expandedCats.has(catKey)) {
+          expandedCats.delete(catKey);
+        } else {
+          expandedCats.add(catKey);
+        }
+        renderCategories();
+      });
+
+      // Subcategories Box (Collapsed by default)
       const subsBox = document.createElement('div');
       subsBox.className = 'ih4-subs-box';
 
@@ -2798,7 +2838,7 @@ javascript:(async () => {
       subsHead.innerHTML = `
         <span class="ih4-subs-status">${isSelectedCat ? (`${countSelected} of ${totalSubs} aisles selected`) : (`${totalSubs} subcategories:`)}</span>
         <div class="ih4-subs-actions">
-          <button type="button" class="ih4-btn-action" data-action="all">${isSelectedCat ? 'Select All' : 'Select All'}</button>
+          <button type="button" class="ih4-btn-action" data-action="all">Select All</button>
           <button type="button" class="ih4-btn-action" data-action="none">Clear</button>
         </div>
       `;
@@ -2807,6 +2847,7 @@ javascript:(async () => {
         e.stopPropagation();
         selectedCat = catKey;
         selectedSubs = new Set(subs.map(s => s.id || s.name));
+        expandedCats.add(catKey);
         renderCategories();
         updateFooter();
       });
@@ -2844,6 +2885,7 @@ javascript:(async () => {
             // Switched category -> deselect previous category and select only this subcategory
             selectedCat = catKey;
             selectedSubs = new Set([subKey]);
+            expandedCats.add(catKey);
           } else {
             // Same category -> toggle subcategory
             if (selectedSubs.has(subKey)) {
@@ -2888,7 +2930,7 @@ javascript:(async () => {
   updateFooter();
 
   /* ==========================================================================
-     Results Tab Application Shell (Single-Page App)
+     Results Tab Application Shell (Zepto-Style 5-Column Grid with Brand Filter)
      ========================================================================== */
 
   function buildResultsTabHTML(categoriesList, initialData = null, initialMeta = null) {
@@ -2902,118 +2944,279 @@ javascript:(async () => {
   <meta charset="utf-8">
   <title>Instamart Hunter v4 — Top Deals Results</title>
   <style>
-    :root { color-scheme: light; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f8fafc; color: #0f172a; }
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --border-hover: #cbd5e1;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --orange: #fc8019;
+      --green: #16a34a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
 
     header {
-      position: sticky; top: 0; background: #ffffff; color: #0f172a; padding: 14px 24px; z-index: 6;
+      position: sticky; top: 0; background: #ffffff; color: #0f172a; padding: 14px 24px; z-index: 10;
       display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-      border-bottom: 1px solid #e2e8f0;
+      border-bottom: 1px solid var(--border);
     }
-    header h1 { font-size: 16px; margin: 0; font-weight: 700; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; color: #0f172a; }
-    header .badge { font-size: 11px; background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
-    header .scout-tag { font-size: 11px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
-    header .header-actions { display: flex; align-items: center; gap: 12px; }
-    .count { font-size: 13px; color: #64748b; font-weight: 500; }
-    .btn-action {
-      padding: 7px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a;
-      font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s ease;
+    header h1 {
+      font-size: 16px; margin: 0; font-weight: 800; letter-spacing: -.01em;
+      display: flex; align-items: center; gap: 8px; color: #0f172a;
     }
-    .btn-action:hover { background: #f8fafc; border-color: #94a3b8; }
+    header .badge {
+      font-size: 11px; background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5;
+      padding: 2px 8px; border-radius: 12px; font-weight: 700;
+    }
+    header .count { font-size: 13px; color: var(--text-muted); font-weight: 600; }
 
+    /* Controls Bar: Search, Subcategory, Brand, Sort */
     .controls {
-      position: sticky; top: 52px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 12px 24px;
-      display: flex; gap: 12px; flex-wrap: wrap; z-index: 5;
+      position: sticky; top: 53px; background: #ffffff; border-bottom: 1px solid var(--border);
+      padding: 12px 24px; display: flex; gap: 10px; flex-wrap: wrap; z-index: 9;
+      align-items: center;
     }
     .controls input, .controls select {
-      padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px; color: #0f172a; background: #ffffff; outline: none;
+      padding: 9px 12px; border-radius: 8px; border: 1px solid #cbd5e1;
+      font-size: 13px; color: #0f172a; background: #ffffff; outline: none;
+      transition: border-color .15s ease;
     }
-    .controls input:focus, .controls select:focus { border-color: #fc8019; }
-    .controls input { flex: 2; min-width: 200px; }
-    .controls select { flex: 1; min-width: 160px; cursor: pointer; }
+    .controls input:focus, .controls select:focus { border-color: var(--orange); }
+    .controls input { flex: 2; min-width: 220px; }
+    .controls select { flex: 1; min-width: 150px; cursor: pointer; }
     .controls.disabled { opacity: .5; pointer-events: none; }
 
-    table { width: 100%; border-collapse: collapse; background: #fff; }
-    thead th {
-      position: sticky; top: 112px; background: #f8fafc; z-index: 4; text-align: left; padding: 11px 16px;
-      font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; border-bottom: 1px solid #e2e8f0;
-      cursor: pointer; user-select: none; white-space: nowrap;
-    }
-    thead th:hover { color: #fc8019; }
-    thead th.sorted-asc::after { content: " \\25B2"; }
-    thead th.sorted-desc::after { content: " \\25BC"; }
-    tbody td { padding: 11px 16px; font-size: 13px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-    tbody tr:hover { background: #fffaf5; }
-    .thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: contain; background: #f8fafc; border: 1px solid #e2e8f0; }
-    .name { font-weight: 600; max-width: 320px; }
-    .name a { color: #0f172a; text-decoration: none; }
-    .name a:hover { text-decoration: underline; color: #fc8019; }
-    .pack { font-size: 11.5px; color: #64748b; margin-top: 2px; }
-    .tag { display: inline-block; font-size: 11px; color: #475569; background: #f1f5f9; border-radius: 6px; padding: 2px 7px; }
-    .discount { color: #16a34a; font-weight: 800; font-size: 14px; }
-    .discount.zero { color: #94a3b8; font-weight: 600; font-size: 12px; }
-    .mrp { color: #94a3b8; text-decoration: line-through; font-size: 11.5px; margin-left: 6px; }
-    .links-cell { display: flex; gap: 6px; }
-    .btn-small { font-size: 11px; padding: 4px 9px; border-radius: 6px; text-decoration: none; font-weight: 700; }
-    .btn-search { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
-    .btn-search:hover { background: #fc8019; color: #fff; border-color: #fc8019; }
-    .empty { padding: 70px 20px; text-align: center; color: #64748b; }
-
-    #loading { padding: 100px 20px; text-align: center; }
+    /* Loading Spinner */
+    #loading { padding: 80px 20px; text-align: center; }
     .spinner {
-      width: 38px; height: 38px; border-radius: 50%; border: 3.5px solid #e2e8f0; border-top-color: #fc8019;
-      margin: 0 auto 20px; animation: ih4-spin 0.8s linear infinite;
+      width: 36px; height: 36px; border-radius: 50%; border: 3.5px solid #e2e8f0;
+      border-top-color: var(--orange); margin: 0 auto 16px; animation: ih4-spin 0.8s linear infinite;
     }
     @keyframes ih4-spin { to { transform: rotate(360deg); } }
     #loading .msg { font-size: 15px; color: #1e293b; font-weight: 700; }
     #loading .sub { font-size: 12.5px; color: #64748b; margin-top: 6px; }
-    #loading .bar-wrap { width: 260px; height: 7px; border-radius: 4px; background: #e2e8f0; margin: 18px auto 0; overflow: hidden; }
-    #loading .bar { height: 100%; width: 0%; background: #fc8019; transition: width .25s ease; }
+    #loading .bar-wrap { width: 240px; height: 6px; border-radius: 4px; background: #e2e8f0; margin: 16px auto 0; overflow: hidden; }
+    #loading .bar { height: 100%; width: 0%; background: var(--orange); transition: width .2s ease; }
+
+    /* 5-Column Responsive Product Card Grid (Zepto Style) */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 16px;
+      padding: 20px 24px 60px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    @media (max-width: 1200px) {
+      .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    @media (max-width: 900px) {
+      .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; }
+    }
+
+    /* Product Card */
+    .product-card {
+      position: relative;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    .product-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      border-color: #cbd5e1;
+    }
+
+    /* Discount Badge (Green Background on Top Left) */
+    .discount-badge {
+      position: absolute;
+      top: 9px;
+      left: 9px;
+      background: var(--green);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 7px;
+      border-radius: 6px;
+      z-index: 2;
+      letter-spacing: 0.02em;
+      box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+    }
+
+    /* Product Image Container (Centered) */
+    .img-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 145px;
+      background: #fafbfc;
+      padding: 12px;
+      text-decoration: none;
+      position: relative;
+    }
+    .product-img {
+      max-height: 125px;
+      max-width: 100%;
+      object-fit: contain;
+      transition: transform .15s ease;
+    }
+    .product-card:hover .product-img {
+      transform: scale(1.03);
+    }
+    .img-placeholder {
+      font-size: 32px;
+      color: #94a3b8;
+    }
+
+    /* Product Info Below Image */
+    .card-body {
+      padding: 12px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .meta-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .brand-name {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 110px;
+    }
+    .subcat-pill {
+      font-size: 10px;
+      color: #475569;
+      background: #f1f5f9;
+      padding: 1px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100px;
+    }
+
+    .product-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+      line-height: 1.38;
+      text-decoration: none;
+      margin-bottom: 4px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 36px;
+    }
+    .product-title:hover {
+      color: var(--orange);
+    }
+
+    .pack-text {
+      font-size: 11.5px;
+      color: #64748b;
+      margin-bottom: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .price-container {
+      margin-top: auto;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .selling-price {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .mrp-price {
+      font-size: 12px;
+      color: #94a3b8;
+      text-decoration: line-through;
+    }
+    .save-tag {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--green);
+      margin-left: auto;
+    }
+
+    .empty-state {
+      padding: 80px 20px;
+      text-align: center;
+      color: #64748b;
+      font-size: 13.5px;
+      grid-column: 1 / -1;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Instamart Category Scout <span class="badge">Top Deals</span></h1>
+    <h1>🛒 Instamart Category Scout <span class="badge">Top Deals</span></h1>
     <div class="header-actions">
       <span class="count" id="count">${hasInitial ? initialData.length + ' deals' : 'Starting Scout…'}</span>
     </div>
   </header>
 
   <div class="controls ${hasInitial ? '' : 'disabled'}" id="controls">
-    <input id="search" placeholder="Filter by product name, pack, subcategory…" />
+    <input id="search" placeholder="🔍 Search product, brand, pack, aisle…" />
     <select id="subFilter">
       <option value="">All Subcategories</option>
+    </select>
+    <select id="brandFilter">
+      <option value="">All Brands</option>
+    </select>
+    <select id="sortSelect">
+      <option value="discount-desc">🔥 Highest Discount %</option>
+      <option value="savings-desc">💰 Highest Savings (₹)</option>
+      <option value="price-asc">💵 Price: Low to High</option>
+      <option value="price-desc">💎 Price: High to Low</option>
+      <option value="name-asc">🔤 Name: A to Z</option>
     </select>
   </div>
 
   <div id="loading" style="${hasInitial ? 'display:none;' : ''}">
     <div class="spinner"></div>
     <div class="msg" id="loadMsg">Connecting to Swiggy Instamart…</div>
-    <div class="sub" id="loadSub">Scouting Page 1 across selected categories</div>
+    <div class="sub" id="loadSub">Scouting top deals across selected categories</div>
     <div class="bar-wrap"><div class="bar" id="loadBar"></div></div>
   </div>
 
-  <table id="resultsTable" style="${hasInitial && initialData.length ? 'display:table;' : 'display:none;'}">
-    <thead>
-      <tr>
-        <th></th>
-        <th data-key="name">Product & Pack</th>
-        <th data-key="subCategory">Subcategory</th>
-        <th data-key="price">Price</th>
-        <th data-key="discount">Discount</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
-
-  <div class="empty" id="emptyMsg" style="display:none;"></div>
+  <div class="product-grid" id="productGrid"></div>
 
   <script>
     let DATA = ${serializedData} || [];
     let META = ${serializedMeta} || null;
-    let sortKey = 'discount', sortDir = 'desc', query = '', subFilter = '';
+    let query = '', subFilter = '', brandFilter = '', sortOption = 'discount-desc';
 
     function esc(s) {
       return String(s || '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -3031,75 +3234,94 @@ javascript:(async () => {
       subSelect.innerHTML = optHtml;
     }
 
+    function updateBrandFilter() {
+      const brandSelect = document.getElementById('brandFilter');
+      if (!brandSelect) return;
+      const currentVal = brandSelect.value;
+      const brands = Array.from(new Set(DATA.map(r => r.brand).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      let optHtml = '<option value="">All Brands (' + brands.length + ')</option>';
+      brands.forEach(b => {
+        optHtml += '<option value="' + esc(b) + '"' + (b === currentVal ? ' selected' : '') + '>' + esc(b) + '</option>';
+      });
+      brandSelect.innerHTML = optHtml;
+    }
+
     function render() {
       const q = query.trim().toLowerCase();
 
       let rows = DATA.filter((r) => {
         if (subFilter && r.subCategory !== subFilter) return false;
+        if (brandFilter && r.brand !== brandFilter) return false;
         if (!q) return true;
-        return (r.name + ' ' + (r.pack || '') + ' ' + (r.subCategory || '')).toLowerCase().includes(q);
+        return (
+          (r.name || '') + ' ' +
+          (r.brand || '') + ' ' +
+          (r.pack || '') + ' ' +
+          (r.subCategory || '')
+        ).toLowerCase().includes(q);
       });
 
       rows.sort((a, b) => {
-        let av = a[sortKey], bv = b[sortKey];
-        if (typeof av === 'string') av = av.toLowerCase();
-        if (typeof bv === 'string') bv = bv.toLowerCase();
-        if (av < bv) return sortDir === 'asc' ? -1 : 1;
-        if (av > bv) return sortDir === 'asc' ? 1 : -1;
-        return 0;
+        switch (sortOption) {
+          case 'discount-desc': return (b.discount || 0) - (a.discount || 0);
+          case 'savings-desc': return (b.savings || 0) - (a.savings || 0);
+          case 'price-asc': return (a.price || 0) - (b.price || 0);
+          case 'price-desc': return (b.price || 0) - (a.price || 0);
+          case 'name-asc': return (a.name || '').localeCompare(b.name || '');
+          default: return (b.discount || 0) - (a.discount || 0);
+        }
       });
 
       document.getElementById('count').textContent = rows.length + ' of ' + DATA.length + ' deals';
-      const emptyEl = document.getElementById('emptyMsg');
-      const tableEl = document.getElementById('resultsTable');
+      const gridEl = document.getElementById('productGrid');
 
       if (rows.length === 0) {
-        tableEl.style.display = 'none';
-        emptyEl.style.display = 'block';
-        emptyEl.innerHTML = '<div style="padding:40px;color:#64748b;font-size:13px;">No items match your search/filter criteria.</div>';
+        gridEl.innerHTML = '<div class="empty-state">No products matched your search or filters.</div>';
       } else {
-        emptyEl.style.display = 'none';
-        tableEl.style.display = 'table';
-        document.getElementById('tbody').innerHTML = rows.map((r) => \`
-          <tr>
-            <td>\${r.image ? '<img class="thumb" src="https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_100,h_100,c_fit/' + esc(r.image) + '" loading="lazy">' : ''}</td>
-            <td class="name">
-              <a href="\${esc(r.searchLink)}" target="_blank" rel="noopener">\${esc(r.name)}</a>
-              \${r.pack ? '<div class="pack">' + esc(r.pack) + '</div>' : ''}
-            </td>
-            <td><span class="tag">\${esc(r.subCategory)}</span></td>
-            <td>₹\${r.price}\${r.mrp > r.price ? '<span class="mrp">₹' + r.mrp + '</span>' : ''}</td>
-            <td>\${r.discount > 0 ? '<span class="discount">' + r.discount + '% OFF</span>' : '<span class="discount zero">—</span>'}</td>
-            <td>
-              <div class="links-cell">
-                <a class="btn-small btn-search" href="\${esc(r.searchLink)}" target="_blank" rel="noopener" title="Search & Add on Instamart">Add ↗</a>
-              </div>
-            </td>
-          </tr>
-        \`).join('');
-      }
+        gridEl.innerHTML = rows.map((r) => {
+          const imgUrl = r.imageUrl || (r.image ? ('https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_360,h_360,c_fit/' + esc(r.image)) : '');
+          const brand = r.brand || 'Instamart';
+          const sub = r.subCategory || '';
+          const sLink = r.searchLink || ('https://www.swiggy.com/instamart/search?custom_back=true&query=' + encodeURIComponent(r.name));
 
-      document.querySelectorAll('thead th[data-key]').forEach((th) => {
-        th.classList.remove('sorted-asc', 'sorted-desc');
-        if (th.dataset.key === sortKey) th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
-      });
+          let cardHtml = '<div class="product-card">';
+          if (r.discount > 0) {
+            cardHtml += '<div class="discount-badge">' + r.discount + '% OFF</div>';
+          }
+          cardHtml += '<a class="img-wrap" href="' + esc(sLink) + '" target="_blank" rel="noopener" title="Search ' + esc(r.name) + ' on Instamart">';
+          if (imgUrl) {
+            cardHtml += '<img class="product-img" src="' + imgUrl + '" alt="' + esc(r.name) + '" loading="lazy" />';
+          } else {
+            cardHtml += '<div class="img-placeholder">🛒</div>';
+          }
+          cardHtml += '</a>';
+          cardHtml += '<div class="card-body">';
+          cardHtml += '<div class="meta-line">';
+          cardHtml += '<span class="brand-name" title="' + esc(brand) + '">' + esc(brand) + '</span>';
+          if (sub) {
+            cardHtml += '<span class="subcat-pill" title="' + esc(sub) + '">' + esc(sub) + '</span>';
+          }
+          cardHtml += '</div>';
+          cardHtml += '<a class="product-title" href="' + esc(sLink) + '" target="_blank" rel="noopener" title="' + esc(r.name) + '">' + esc(r.name) + '</a>';
+          cardHtml += '<div class="pack-text">' + (r.pack ? esc(r.pack) : '&nbsp;') + '</div>';
+          cardHtml += '<div class="price-container">';
+          cardHtml += '<span class="selling-price">₹' + r.price + '</span>';
+          if (r.mrp > r.price) {
+            cardHtml += '<span class="mrp-price">₹' + r.mrp + '</span>';
+          }
+          if (r.savings > 0) {
+            cardHtml += '<span class="save-tag">Save ₹' + r.savings + '</span>';
+          }
+          cardHtml += '</div></div></div>';
+          return cardHtml;
+        }).join('');
+      }
     }
 
     document.getElementById('search').addEventListener('input', (e) => { query = e.target.value; render(); });
     document.getElementById('subFilter').addEventListener('change', (e) => { subFilter = e.target.value; render(); });
-
-    document.querySelectorAll('thead th[data-key]').forEach((th) => {
-      th.addEventListener('click', () => {
-        const key = th.dataset.key;
-        if (sortKey === key) {
-          sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-        } else {
-          sortKey = key;
-          sortDir = key === 'name' || key === 'subCategory' ? 'asc' : 'desc';
-        }
-        render();
-      });
-    });
+    document.getElementById('brandFilter').addEventListener('change', (e) => { brandFilter = e.target.value; render(); });
+    document.getElementById('sortSelect').addEventListener('change', (e) => { sortOption = e.target.value; render(); });
 
     window.__ihReceive = function (msg) {
       if (!msg || (msg.source && msg.source !== 'ih4')) return;
@@ -3116,6 +3338,7 @@ javascript:(async () => {
         DATA = msg.items || [];
         META = msg.meta || null;
         updateSubFilter();
+        updateBrandFilter();
         document.getElementById('loading').style.display = 'none';
         document.getElementById('controls').classList.remove('disabled');
         render();
@@ -3132,6 +3355,7 @@ javascript:(async () => {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('controls').classList.remove('disabled');
       updateSubFilter();
+      updateBrandFilter();
       render();
     } else {
       try {
@@ -3193,10 +3417,9 @@ javascript:(async () => {
     if (!catObj) return;
 
     const catNameClean = getCleanCatName(catKey);
-    const allSubs = catObj.subs || [];
-    const activeSubs = allSubs.filter(s => selectedSubs.has(s.id || s.name));
+    const activeSubs = (catObj.subs || []).filter(s => selectedSubs.has(s.id || s.name));
 
-    if (!activeSubs.length) {
+    if (activeSubs.length === 0) {
       statusEl.textContent = 'Please select at least one subcategory.';
       return;
     }

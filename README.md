@@ -17,7 +17,7 @@ A comprehensive toolkit for discovering hidden deals, clearance discounts, and h
 | **Threshold** | User-selected via UI chips (e.g. 50%, 60%, 70%) | **Strict ≥ 70% OFF** (customizable in `config.json`) |
 | **Speed** | 1–2 seconds per selected subcategory | ~15–25 seconds total for 110 aisles in parallel |
 | **Rate-Limit Safety** | Zero risk (uses your authentic browser cookies) | Independent VM IPs with CloudFront backoff |
-| **Spam Prevention** | Interactive table with search & sorting | Consecutive run suppression & morning reset |
+| **Spam Prevention** | Zepto-style card grid, brand filters & sorting | Consecutive run suppression & morning reset |
 
 ---
 
