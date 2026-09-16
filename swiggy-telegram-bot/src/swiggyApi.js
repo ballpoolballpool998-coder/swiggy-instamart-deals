@@ -325,6 +325,52 @@ async function scrapeWithBrowser(mode, storeConfig, options = {}) {
         return { rawPages, subcategoriesCount: subs.length };
       }
 
+      if (m === 'aisles') {
+        const subcategories = opt.subcategories || [];
+        const rawPages = [];
+        const total = subcategories.length;
+
+        for (let i = 0; i < total; i++) {
+          const item = subcategories[i];
+          if (window.onBrowserProgress) {
+            await window.onBrowserProgress(i + 1, total, item.name);
+          }
+
+          const filterUrl = `https://instamart.in/api/instamart/category-listing/filter/v2?storeId=${sid}&primaryStoreId=${pid}&secondaryStoreId=${secid}&pageNo=0&offset=0&page_name=category_listing_filter`;
+          const body = {
+            categoryName: item.category,
+            filterName: item.name,
+            filterId: item.id,
+            taxonomyType: item.taxonomyType || 'taxonomy 5',
+            items_offset: '0',
+            facets: [],
+            sortAttribute: 'discountPercentHighToLow'
+          };
+
+          try {
+            const fRes = await fetch(filterUrl, {
+              method: 'POST',
+              headers: { 'accept': '*/*', 'content-type': 'application/json', 'matcher': makeMatcher() },
+              body: JSON.stringify(body),
+              credentials: 'include'
+            });
+            const fJson = await fRes.json();
+            if (fJson?.data) {
+              fJson._meta = {
+                category: item.category,
+                subCategory: item.name,
+                dealType: opt.dealType || 'essential'
+              };
+              rawPages.push(fJson);
+            }
+          } catch (e) {}
+
+          await pSleep(200 + Math.random() * 100);
+        }
+
+        return { rawPages };
+      }
+
       if (m === 'keywords') {
         const keywordItems = opt.keywordItems || [];
         const rawPages = [];
@@ -420,6 +466,8 @@ async function scrapeWithBrowser(mode, storeConfig, options = {}) {
       noiceCollections: NOICE_SUB_COLLECTIONS,
       categoryObj: options.categoryObj,
       keywordItems: options.keywordItems,
+      subcategories: options.subcategories,
+      dealType: options.dealType,
       onProgress: !!options.onProgress
     });
 
@@ -428,6 +476,8 @@ async function scrapeWithBrowser(mode, storeConfig, options = {}) {
       const meta = pageJson._meta || {};
       const items = parseItemsFromData(pageJson);
       for (const item of items) {
+        if (meta.category) item.category = meta.category;
+        if (meta.subCategory) item.subCategory = meta.subCategory;
         if (meta.dealType) item.dealType = meta.dealType;
         if (meta.query) item.searchQuery = meta.query;
         if (meta.threshold) item.threshold = meta.threshold;
@@ -490,15 +540,22 @@ async function apiRequestSafe(url, method = 'GET', body = null, retry = 0) {
     let json = null;
     try { json = await res.json(); } catch (e) {}
 
+    const isCloudfrontRateLimited =
+      Boolean(res.headers?.get('x-rate-limit')) ||
+      (res.headers?.get('x-cache') || '').includes('Error') ||
+      (res.status === 200 && res.headers?.get('content-length') === '0');
+
     const isRateLimited =
       res.status === 429 ||
       res.status === 403 ||
       json?.statusCode === 429 ||
-      json?.statusCode === 403;
+      json?.statusCode === 403 ||
+      isCloudfrontRateLimited;
 
     if (isRateLimited) {
       if (retry >= 3) return null;
       const waitSec = 8 + Math.floor(Math.random() * 4);
+      console.warn(`[SwiggyAPI] Rate-limited (retry ${retry + 1}/3, CloudFront limit: ${isCloudfrontRateLimited}). Waiting ${waitSec}s...`);
       await sleep(waitSec * 1000);
       return apiRequestSafe(url, method, body, retry + 1);
     }
@@ -633,13 +690,15 @@ async function fetchKeywordDeals(storeConfig, options = {}) {
   return fetchKeywordDealsDirect(storeConfig, keywordItems);
 }
 
-async function fetchEssentialAisleDeals(storeConfig, options = {}) {
+async function fetchEssentialAisleDealsDirect(storeConfig, options = {}) {
   const cfg = require('../config.json');
-  const subcategories = options.subcategories || cfg.campaigns?.essentialAisles?.subcategories || [];
+  const subcategories = options.subcategories || cfg.campaigns?.essentials?.subcategories || cfg.campaigns?.essentialAisles?.subcategories || [];
+  const campaignName = options.campaignName || 'Aisles';
+  const dealType = options.dealType || 'essential';
   const { sid, pid, secid } = storeConfig;
   const resultMap = new Map();
 
-  console.log(`[SwiggyAPI] Scanning ${subcategories.length} Essential Aisles for Store ${sid}...`);
+  console.log(`[SwiggyAPI] Scanning ${subcategories.length} ${campaignName} for Store ${sid}...`);
 
   for (let i = 0; i < subcategories.length; i++) {
     const item = subcategories[i];
@@ -660,7 +719,7 @@ async function fetchEssentialAisleDeals(storeConfig, options = {}) {
       for (const it of items) {
         it.category = item.category;
         it.subCategory = item.name;
-        it.dealType = 'essential';
+        it.dealType = dealType;
 
         const existing = resultMap.get(it.name);
         if (!existing || it.price < existing.price) {
@@ -668,13 +727,35 @@ async function fetchEssentialAisleDeals(storeConfig, options = {}) {
         }
       }
     }
-    await sleep(200);
+    await sleep(350);
   }
 
   const allItems = Array.from(resultMap.values());
   allItems.sort((a, b) => b.discount - a.discount);
-  console.log(`[SwiggyAPI] Scraped ${allItems.length} unique items across ${subcategories.length} essential aisles.`);
+  console.log(`[SwiggyAPI] Scraped ${allItems.length} unique items across ${subcategories.length} ${campaignName}.`);
   return allItems;
+}
+
+async function fetchEssentialAisleDeals(storeConfig, options = {}) {
+  const cfg = require('../config.json');
+  const subcategories = options.subcategories || cfg.campaigns?.essentials?.subcategories || cfg.campaigns?.essentialAisles?.subcategories || [];
+  const campaignName = options.campaignName || 'Aisles';
+  const dealType = options.dealType || 'essential';
+
+  if (process.env.USE_BROWSER !== 'false' && findBrowserExecutable()) {
+    try {
+      console.log(`[SwiggyAPI] Scraping ${subcategories.length} ${campaignName} via Browser...`);
+      return await scrapeWithBrowser('aisles', storeConfig, {
+        subcategories,
+        dealType,
+        campaignName
+      });
+    } catch (err) {
+      console.warn(`[SwiggyAPI] Browser scrape for ${campaignName} failed, falling back to direct fetch…`, err.message);
+    }
+  }
+
+  return fetchEssentialAisleDealsDirect(storeConfig, options);
 }
 
 module.exports = {

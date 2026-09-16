@@ -2,9 +2,9 @@ name: Swiggy Instamart Keyword Deal Hunter
 
 on:
   schedule:
-    # Wakes up at minute 27 UTC between 03:27 and 16:27 UTC (08:57 AM to 09:57 PM IST).
-    # The runner boots up early (~35s), then syncs to hit Swiggy precisely at 09:00 AM through 10:00 PM IST (:00:00).
-    - cron: '27 3-16 * * *'
+    # Wakes up at minute 27 UTC between 04:27 and 16:27 UTC (09:57 AM to 09:57 PM IST), plus 18:27 UTC (11:57 PM IST).
+    # The runners boot up early (~30-40s), then syncToHourMark waits until :00:00 IST sharp (10:00 AM - 10:00 PM IST + 12:00 AM midnight IST).
+    - cron: '27 4-16,18 * * *'
   workflow_dispatch:
     inputs:
       skip_sync:
@@ -15,9 +15,13 @@ on:
 
 jobs:
   hunt:
-    name: Single Unified Deal Hunter
+    name: Worker (${{ matrix.worker }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        worker: [essentials, treats, lifestyle]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -33,7 +37,7 @@ jobs:
         working-directory: swiggy-telegram-bot
         run: npm ci || npm install
 
-      - name: Run Keyword Deal Hunter
+      - name: Run ${{ matrix.worker }} Deal Hunter
         working-directory: swiggy-telegram-bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -49,5 +53,5 @@ jobs:
           if [ "$SKIP_SYNC" = "true" ]; then
             EXTRA_FLAGS="--skip-sync"
           fi
-          echo "Executing Essential Aisles Deal Hunter (19 Curated Aisles)..."
-          node src/cron-runner.js essentials $EXTRA_FLAGS
+          echo "Executing Deal Hunter Worker: ${{ matrix.worker }}..."
+          node src/cron-runner.js ${{ matrix.worker }} $EXTRA_FLAGS

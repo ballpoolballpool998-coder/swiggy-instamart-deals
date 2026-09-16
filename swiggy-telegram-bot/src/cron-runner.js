@@ -62,6 +62,64 @@ async function syncToHourMark(skip = false) {
   }
 }
 
+async function runSubcategoryCampaign(campaignKey, campaignCfg, options = {}) {
+  const { bot, chatId, storeConfig, threshold, timeString } = options;
+  const name = campaignCfg.name || campaignKey;
+  const tag = campaignCfg.tag || '';
+  const headerName = tag ? `${tag} ${name}` : name;
+  const subcategories = campaignCfg.subcategories || [];
+
+  console.log(`\n--- Running ${name} (${subcategories.length} Subcategories) ---`);
+
+  let items = [];
+  let attempts = 0;
+  const maxAttempts = 3;
+
+  while (attempts < maxAttempts) {
+    attempts++;
+    try {
+      console.log(`[${campaignKey}] Attempt ${attempts}/${maxAttempts} - Fetching deals...`);
+      items = await fetchEssentialAisleDeals(storeConfig, {
+        subcategories,
+        campaignName: name,
+        dealType: campaignKey
+      });
+
+      if (items && items.length > 0) {
+        console.log(`[${campaignKey}] Attempt ${attempts} succeeded: scraped ${items.length} items across ${subcategories.length} aisles.`);
+        break;
+      } else {
+        console.warn(`[${campaignKey}] Attempt ${attempts} returned 0 items.`);
+        if (attempts < maxAttempts) {
+          console.log(`[${campaignKey}] Waiting 6s before retry ${attempts + 1}...`);
+          await sleep(6000);
+        }
+      }
+    } catch (e) {
+      console.error(`[${campaignKey}] Attempt ${attempts} error:`, e.message);
+      if (attempts < maxAttempts) {
+        console.log(`[${campaignKey}] Waiting 6s before retry ${attempts + 1}...`);
+        await sleep(6000);
+      }
+    }
+  }
+
+  if (items.length > 0) {
+    const alerts = findAlertWorthyDeals(items, threshold, campaignKey);
+    console.log(`[${campaignKey}] Found ${alerts.length} alert-worthy deals (Discount ≥ ${threshold}%).`);
+    if (bot && chatId && alerts.length > 0) {
+      await sendBatchAlerts(bot, chatId, alerts, {
+        timeString,
+        workerInfo: headerName
+      });
+    } else if (!alerts.length) {
+      console.log(`[${campaignKey}] No items met the minimum discount threshold (${threshold}%) this run.`);
+    }
+  } else {
+    console.error(`[${campaignKey}] All retry attempts failed or returned 0 items.`);
+  }
+}
+
 async function main() {
   console.log(`[CronRunner] Mode: ${mode.toUpperCase()} | Store: ${storeConfig.sid}`);
 
@@ -84,87 +142,89 @@ async function main() {
 
   console.log(`[CronRunner] Active IST Time: ${istDate.toUTCString()} (Day: ${istDay}, Hour: ${istHours}:${String(istMinutes).padStart(2, '0')})`);
 
-  let shouldRunEssentials = false;
-  let shouldRunBazaar = false;
-  let shouldRunNoice = false;
+  const timeFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+  const timeString = timeFormatter.format(new Date()) + ' IST';
 
-  // Accept 'keywords' alias for backwards compatibility with workflow triggers
-  if (mode === 'keywords' || mode === 'essentials' || mode === 'aisles') {
-    shouldRunEssentials = true;
+  let runEssentials = false;
+  let runTreats = false;
+  let runLifestyle = false;
+  let runBazaar = false;
+  let runNoice = false;
+
+  if (mode === 'essentials' || mode === 'keywords' || mode === 'aisles') {
+    runEssentials = true;
+  } else if (mode === 'treats' || mode === 'snacks' || mode === 'sweets') {
+    runTreats = true;
+  } else if (mode === 'lifestyle' || mode === 'home' || mode === 'electronics') {
+    runLifestyle = true;
   } else if (mode === 'bazaar') {
-    shouldRunBazaar = true;
+    runBazaar = true;
   } else if (mode === 'noice') {
-    shouldRunNoice = true;
+    runNoice = true;
   } else {
     // Auto Mode:
-    // 1. Wednesday midnight window (12:00 AM - 12:30 AM IST on Wednesday)
-    if (istDay === 3 && istHours === 0) {
-      shouldRunBazaar = true;
-    }
-    // 2. Essential Aisles Hunter between 9:00 AM and 10:00 PM IST
-    if (istHours >= 9 && (istHours < 22 || (istHours === 22 && istMinutes <= 15))) {
-      shouldRunEssentials = true;
-    }
-  }
-
-  const essentialConfig = config.campaigns?.essentialAisles || {};
-  const essentialThreshold = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || essentialConfig.minDiscount || minDiscount || 70;
-
-  if (shouldRunEssentials) {
-    console.log(`\n--- Running Essential Aisles Scout (19 Subcategories) ---`);
-
-    let items = [];
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    while (attempts < maxAttempts) {
-      attempts++;
-      try {
-        console.log(`[EssentialAisles] Attempt ${attempts}/${maxAttempts} - Fetching deals...`);
-        items = await fetchEssentialAisleDeals(storeConfig, {
-          subcategories: essentialConfig.subcategories
-        });
-
-        if (items && items.length > 0) {
-          console.log(`[EssentialAisles] Attempt ${attempts} succeeded: scraped ${items.length} items across 19 aisles.`);
-          break;
-        } else {
-          console.warn(`[EssentialAisles] Attempt ${attempts} returned 0 items.`);
-          if (attempts < maxAttempts) {
-            console.log(`[EssentialAisles] Waiting 6s before retry ${attempts + 1}...`);
-            await sleep(6000);
-          }
-        }
-      } catch (e) {
-        console.error(`[EssentialAisles] Attempt ${attempts} error:`, e.message);
-        if (attempts < maxAttempts) {
-          console.log(`[EssentialAisles] Waiting 6s before retry ${attempts + 1}...`);
-          await sleep(6000);
-        }
-      }
-    }
-
-    if (items.length > 0) {
-      const alerts = findAlertWorthyDeals(items, essentialThreshold, 'essentialAisles');
-      console.log(`[EssentialAisles] Found ${alerts.length} alert-worthy deals (Discount ≥ ${essentialThreshold}%).`);
-      if (bot && chatId && alerts.length > 0) {
-        const timeFormatter = new Intl.DateTimeFormat('en-US', {
-          timeZone: 'Asia/Kolkata',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        });
-        const timeString = timeFormatter.format(new Date()) + ' IST';
-        await sendBatchAlerts(bot, chatId, alerts, { timeString });
-      } else if (!alerts.length) {
-        console.log(`[EssentialAisles] No items met the minimum discount threshold (${essentialThreshold}%) this run.`);
-      }
-    } else {
-      console.error('[EssentialAisles] All retry attempts failed or returned 0 items.');
+    // Scheduled window: 10:00 AM to 10:00 PM IST OR 12:00 AM midnight IST
+    const isWithinHours = (istHours === 0) || (istHours >= 10 && (istHours < 22 || (istHours === 22 && istMinutes <= 15)));
+    if (isWithinHours) {
+      runEssentials = true;
+      runTreats = true;
+      runLifestyle = true;
     }
   }
 
-  if (shouldRunBazaar) {
+  // Wednesday midnight window (12:00 AM - 12:30 AM IST on Wednesday)
+  if (istDay === 3 && istHours === 0 && (mode === 'bazaar' || mode === 'essentials' || mode === 'auto')) {
+    runBazaar = true;
+  }
+
+  const campaigns = config.campaigns || {};
+
+  // 1. Worker 1: Daily Essentials & Fresh
+  if (runEssentials) {
+    const cfg = campaigns.essentials || campaigns.essentialAisles || {};
+    const threshold = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || cfg.minDiscount || minDiscount || 70;
+    await runSubcategoryCampaign('essentials', cfg, {
+      bot,
+      chatId,
+      storeConfig,
+      threshold,
+      timeString
+    });
+  }
+
+  // 2. Worker 2: Sweets, Snacks & Treats
+  if (runTreats) {
+    const cfg = campaigns.treats || {};
+    const threshold = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || cfg.minDiscount || minDiscount || 70;
+    await runSubcategoryCampaign('treats', cfg, {
+      bot,
+      chatId,
+      storeConfig,
+      threshold,
+      timeString
+    });
+  }
+
+  // 3. Worker 3: Lifestyle, Home & Electronics
+  if (runLifestyle) {
+    const cfg = campaigns.lifestyle || {};
+    const threshold = parseInt(process.env.MIN_DISCOUNT_PERCENT, 10) || cfg.minDiscount || minDiscount || 70;
+    await runSubcategoryCampaign('lifestyle', cfg, {
+      bot,
+      chatId,
+      storeConfig,
+      threshold,
+      timeString
+    });
+  }
+
+  // 4. Wednesday Bazaar
+  if (runBazaar) {
     console.log('\n--- Running Wednesday Bazaar Scan ---');
     try {
       const items = await fetchWednesdayBazaarDeals(storeConfig);
@@ -172,14 +232,15 @@ async function main() {
       const alerts = findAlertWorthyDeals(items, minDiscount, 'wednesdayBazaar');
       console.log(`[Bazaar] Found ${alerts.length} new/improved deals >= ${minDiscount}%.`);
       if (bot && chatId && alerts.length > 0) {
-        await sendBatchAlerts(bot, chatId, alerts);
+        await sendBatchAlerts(bot, chatId, alerts, { timeString, workerInfo: '🎉 Wednesday Bazaar' });
       }
     } catch (e) {
       console.error('[Bazaar] Error:', e.message);
     }
   }
 
-  if (shouldRunNoice) {
+  // 5. Legacy NOICE Scan
+  if (runNoice) {
     console.log('\n--- Running Legacy NOICE Store Scan ---');
     try {
       const items = await fetchNoiceDeals(storeConfig);
@@ -187,7 +248,7 @@ async function main() {
       const alerts = findAlertWorthyDeals(items, minDiscount, 'noice');
       console.log(`[NOICE] Found ${alerts.length} new/improved deals >= ${minDiscount}%.`);
       if (bot && chatId && alerts.length > 0) {
-        await sendBatchAlerts(bot, chatId, alerts);
+        await sendBatchAlerts(bot, chatId, alerts, { timeString, workerInfo: '✨ The NOICE Store' });
       }
     } catch (e) {
       console.error('[NOICE] Error:', e.message);
