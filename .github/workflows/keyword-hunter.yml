@@ -37,6 +37,14 @@ jobs:
         working-directory: swiggy-telegram-bot
         run: npm ci || npm install
 
+      - name: Restore Deal Cache
+        uses: actions/cache/restore@v4
+        with:
+          path: swiggy-telegram-bot/data
+          key: deal-cache-${{ matrix.worker }}-${{ github.run_id }}
+          restore-keys: |
+            deal-cache-${{ matrix.worker }}-
+
       - name: Run ${{ matrix.worker }} Deal Hunter
         working-directory: swiggy-telegram-bot
         env:
@@ -55,3 +63,10 @@ jobs:
           fi
           echo "Executing Deal Hunter Worker: ${{ matrix.worker }}..."
           node src/cron-runner.js ${{ matrix.worker }} $EXTRA_FLAGS
+
+      - name: Save Deal Cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: swiggy-telegram-bot/data
+          key: deal-cache-${{ matrix.worker }}-${{ github.run_id }}
