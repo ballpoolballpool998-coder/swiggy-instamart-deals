@@ -63,11 +63,16 @@ function parseItemsFromData(data) {
     const name = v.displayName;
     if (!name) continue;
 
-    const skuId = v.skuId || v.spinId || name;
+    const rawSku = v.skuId || v.spinId;
+    const skuId = rawSku || name;
     const imageId = v.imageIds?.[0] || v.imageId || '';
     const imageUrl = imageId
       ? `https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_450,h_450,c_fit/${imageId}`
       : null;
+
+    const itemLink = rawSku && !String(rawSku).includes(' ')
+      ? `https://www.swiggy.com/instamart/item/${encodeURIComponent(rawSku)}`
+      : `https://www.swiggy.com/instamart/search?custom_back=true&query=${encodeURIComponent(name)}`;
 
     items.push({
       skuId,
@@ -82,7 +87,8 @@ function parseItemsFromData(data) {
       rating: v.rating?.value ? `${v.rating.value} ★` : null,
       ratingCount: v.rating?.count || null,
       imageUrl,
-      searchLink: `https://www.swiggy.com/instamart/search?custom_back=true&query=${encodeURIComponent(name)}`
+      itemLink,
+      searchLink: itemLink
     });
   }
   return items;

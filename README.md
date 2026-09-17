@@ -36,24 +36,26 @@ The Deal Scout bookmarklet injects a floating control panel on [swiggy.com/insta
 ---
 
 ### 📱 Mobile Installation & Usage (Chrome, Safari, Brave on Android & iOS)
-Since mobile browsers do not feature drag-and-drop bookmark bars, set up the bookmarklet in 4 quick steps:
+Mobile browsers don't have an "Import HTML" menu in their mobile apps, but the mobile bookmarklet is **ultra-lightweight (only 167 characters)**, making setup take just 10 seconds:
 
-1. **Copy the code**:
+1. **Copy the 167-char code**:
    - Open the setup portal on your phone: 👉 **[https://jairaj26.github.io/swiggy-instamart-deals/](https://jairaj26.github.io/swiggy-instamart-deals/)**
-   - Scroll down to the **"Or click to preview / copy script below"** drawer and tap **Copy Script** (or copy from [`swiggy-hunter-v4.bookmarklet.txt`](swiggy-hunter-v4.bookmarklet.txt)).
+   - Tap **📋 Copy Mobile Code (167 chars)**.
 2. **Create a temporary bookmark**:
-   - Tap the browser menu (<kbd>⋮</kbd> on Android or Share icon on iOS) and tap **⭐ / Add Bookmark** to bookmark this page.
+   - Tap your mobile browser menu (<kbd>⋮</kbd> on Android or Share icon on iOS) and tap **⭐ / Add Bookmark** to bookmark this page.
 3. **Edit the bookmark**:
    - Open your browser's **Bookmarks** list.
    - Tap the <kbd>⋮</kbd> menu next to the new bookmark and select **Edit**.
    - Change the **Name** to `Swiggy Deal Scout`.
-   - Clear the **URL** field and paste the copied `javascript:...` code. Save changes.
+   - Clear the **URL** field and **paste** the 167-char copied script. Save changes.
 4. **How to run on Mobile**:
    - Navigate to **[swiggy.com/instamart](https://www.swiggy.com/instamart)** and ensure your delivery location is set.
-   - Tap your browser's **address / search bar** (URL bar) at the top.
+   - Tap your browser's **address bar** (URL bar) at the top.
    - Type `Swiggy Deal Scout`.
-   - In the dropdown search recommendations, tap the **bookmark icon** named **Swiggy Deal Scout**.
-   - The Deal Scout overlay will open directly over the mobile page!
+   - In the dropdown search suggestions, tap the **bookmark icon** named **Swiggy Deal Scout**.
+   - The Deal Scout overlay will slide out immediately over the mobile page!
+
+> 💡 **Desktop Sync Alternative**: If you use Google Chrome or Apple iCloud account sync, click **"📥 Download Bookmarks (.html)"** on your computer and import it via *Bookmarks → Import Bookmarks*. It will automatically appear in your mobile phone's bookmarks!
 
 ---
 

@@ -15,7 +15,10 @@ function escapeHtml(text) {
  * Click here (direct search link)
  */
 function formatCompactItem(deal, index = null) {
-  const safeUrl = (deal.searchLink || `https://www.swiggy.com/instamart/search?custom_back=true&query=${encodeURIComponent(deal.name)}`).replace(/"/g, '%22');
+  const directUrl = deal.itemLink || (deal.skuId && !String(deal.skuId).includes(' ')
+    ? `https://www.swiggy.com/instamart/item/${encodeURIComponent(deal.skuId)}`
+    : (deal.searchLink || `https://www.swiggy.com/instamart/search?custom_back=true&query=${encodeURIComponent(deal.name)}`));
+  const safeUrl = directUrl.replace(/"/g, '%22');
   const num = index !== null ? `${index}. ` : '• ';
 
   return (
