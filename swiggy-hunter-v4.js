@@ -2360,9 +2360,8 @@ javascript:(async () => {
         ? `https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_360,h_360,c_fit/${imageId}`
         : null;
 
-      const itemLink = rawSku && !String(rawSku).includes(' ')
-        ? `https://www.swiggy.com/instamart/item/${encodeURIComponent(rawSku)}`
-        : `https://www.swiggy.com/instamart/search?custom_back=true&query=${encodeURIComponent(name)}`;
+      const searchLink = `https://www.swiggy.com/instamart/search?custom_back=true&query=${encodeURIComponent(name)}`;
+      const itemLink = searchLink;
 
       const item = {
         skuId,
@@ -2380,7 +2379,7 @@ javascript:(async () => {
         imageUrl,
         image: imageId,
         itemLink,
-        searchLink: itemLink
+        searchLink
       };
 
       const existing = resultMap.get(name);
@@ -3288,9 +3287,7 @@ javascript:(async () => {
           const imgUrl = r.imageUrl || (r.image ? ('https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_360,h_360,c_fit/' + esc(r.image)) : '');
           const brand = r.brand || 'Instamart';
           const sub = r.subCategory || '';
-          const sLink = r.itemLink || (r.skuId && !String(r.skuId).includes(' ')
-            ? ('https://www.swiggy.com/instamart/item/' + encodeURIComponent(r.skuId))
-            : (r.searchLink || ('https://www.swiggy.com/instamart/search?custom_back=true&query=' + encodeURIComponent(r.name))));
+          const sLink = r.searchLink || ('https://www.swiggy.com/instamart/search?custom_back=true&query=' + encodeURIComponent(r.name));
 
           let cardHtml = '<div class="product-card">';
           if (r.discount > 0) {

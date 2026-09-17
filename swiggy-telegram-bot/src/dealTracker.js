@@ -87,37 +87,37 @@ function findAlertWorthyDeals(items, minDiscount = 70, campaignKey = 'default', 
 
     if (item.discount < threshold) continue;
 
-    const itemKey = `${item.skuId || item.name}`;
+    const itemKey = (item.name || '').trim().toLowerCase() || String(item.skuId || '');
+    if (!itemKey) continue;
+
     const prev = cache.items[itemKey];
 
     const isPriceDrop = prev && (item.price < prev.lastAlertedPrice);
-    const wasInPreviousRun = prev && (prev.lastSeenRunId === lastRunId);
+    const wasInPreviousRun = prev && Boolean(lastRunId) && (prev.lastSeenRunId === lastRunId);
     const alreadyAlertedToday = prev && (prev.lastAlertedDate === dateStr);
 
     let shouldAlert = false;
     let alertType = 'NEW_DEAL';
 
     if (isFirstRunOfDay) {
-      // First run of the day: alert all valid deals
+      // First run of the day (10:00 AM IST or calendar date change): alert all qualified deals
       shouldAlert = true;
       alertType = prev ? 'DAILY_DROP' : 'NEW_DEAL';
-    } else if (!prev) {
-      // Brand new item never seen before
+    } else if (!prev || !alreadyAlertedToday) {
+      // Brand new item or first time meeting criteria today
       shouldAlert = true;
       alertType = 'NEW_DEAL';
     } else if (isPriceDrop) {
-      // Price reduced further
+      // Price dropped lower than last alerted price today
       shouldAlert = true;
       alertType = 'PRICE_DROP';
-    } else if (!wasInPreviousRun) {
+    } else if (lastRunId && !wasInPreviousRun) {
       // Item was absent in the immediately preceding run and came back after a few hours
       shouldAlert = true;
       alertType = 'BACK_IN_STOCK';
-    } else if (alreadyAlertedToday && wasInPreviousRun) {
-      // Stays at the same price consecutively: suppress alert
-      shouldAlert = false;
     } else {
-      shouldAlert = true;
+      // Consecutively present at the same price: suppress duplicate hourly alert
+      shouldAlert = false;
     }
 
     if (shouldAlert) {
@@ -133,11 +133,13 @@ function findAlertWorthyDeals(items, minDiscount = 70, campaignKey = 'default', 
 
       cache.items[itemKey] = {
         name: item.name,
+        skuId: item.skuId || null,
         price: item.price,
         mrp: item.mrp,
         discount: item.discount,
         lastAlertedPrice: item.price,
         lastAlertedDate: dateStr,
+        lastAlertedHour: hour,
         lastSeenRunId: runId,
         firstSeen: prev ? prev.firstSeen : now,
         lastSeen: now
@@ -154,6 +156,10 @@ function findAlertWorthyDeals(items, minDiscount = 70, campaignKey = 'default', 
   // Sort deals descending by discount percentage (highest discount first)
   alertList.sort((a, b) => b.discount - a.discount);
 
+  const totalMetCriteria = items.filter(it => it.discount >= (typeof minDiscount === 'number' ? minDiscount : 70)).length;
+  const suppressedCount = Math.max(0, totalMetCriteria - alertList.length);
+  console.log(`[DealTracker:${campaignKey}] Total Scanned: ${items.length} | Meets Criteria: ${totalMetCriteria} | Alerts Sent: ${alertList.length} | Suppressed Duplicates: ${suppressedCount}`);
+
   // Update run metadata
   cache.lastDate = dateStr;
   cache.lastRunHour = hour;
@@ -161,7 +167,8 @@ function findAlertWorthyDeals(items, minDiscount = 70, campaignKey = 'default', 
   cache.lastRuns[runId] = {
     timestamp: now,
     totalItems: items.length,
-    alertsFound: alertList.length
+    alertsFound: alertList.length,
+    suppressedCount
   };
 
   saveCache(cache, campaignKey);

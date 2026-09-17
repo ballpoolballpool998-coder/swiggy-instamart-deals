@@ -70,9 +70,8 @@ function parseItemsFromData(data) {
       ? `https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_450,h_450,c_fit/${imageId}`
       : null;
 
-    const itemLink = rawSku && !String(rawSku).includes(' ')
-      ? `https://www.swiggy.com/instamart/item/${encodeURIComponent(rawSku)}`
-      : `https://www.swiggy.com/instamart/search?custom_back=true&query=${encodeURIComponent(name)}`;
+    const searchLink = `https://www.swiggy.com/instamart/search?custom_back=true&query=${encodeURIComponent(name)}`;
+    const itemLink = searchLink;
 
     items.push({
       skuId,
@@ -88,7 +87,7 @@ function parseItemsFromData(data) {
       ratingCount: v.rating?.count || null,
       imageUrl,
       itemLink,
-      searchLink: itemLink
+      searchLink
     });
   }
   return items;
@@ -733,7 +732,7 @@ async function fetchEssentialAisleDealsDirect(storeConfig, options = {}) {
         }
       }
     }
-    await sleep(350);
+    await sleep(700);
   }
 
   const allItems = Array.from(resultMap.values());
