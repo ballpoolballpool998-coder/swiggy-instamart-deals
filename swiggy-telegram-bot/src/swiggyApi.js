@@ -36,14 +36,26 @@ function findBrowserExecutable() {
   return null;
 }
 
-function extractVariations(node, out) {
+function extractVariations(node, out, parentInfo = {}) {
   if (!node || typeof node !== 'object') return;
+  const currentParent = {
+    productId: node.productId || parentInfo.productId,
+    parentProductId: node.parentProductId || parentInfo.parentProductId,
+    displayName: node.displayName || parentInfo.displayName
+  };
+
   if (node.variations && Array.isArray(node.variations)) {
-    out.push(...node.variations);
+    for (const v of node.variations) {
+      if (currentParent.parentProductId) v.parentProductId = currentParent.parentProductId;
+      if (currentParent.productId) v.productId = currentParent.productId;
+      if (currentParent.displayName) v.parentDisplayName = currentParent.displayName;
+      out.push(v);
+    }
   } else if (node.displayName && (node.price || node.offerPrice)) {
+    if (currentParent.parentProductId) node.parentProductId = currentParent.parentProductId;
     out.push(node);
   } else {
-    Object.values(node).forEach((v) => extractVariations(v, out));
+    Object.values(node).forEach((v) => extractVariations(v, out, currentParent));
   }
 }
 
@@ -65,6 +77,7 @@ function parseItemsFromData(data) {
 
     const rawSku = v.skuId || v.spinId;
     const skuId = rawSku || name;
+    const parentProductId = v.parentProductId || v.productId || null;
     const imageId = v.imageIds?.[0] || v.imageId || '';
     const imageUrl = imageId
       ? `https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_450,h_450,c_fit/${imageId}`
@@ -76,6 +89,7 @@ function parseItemsFromData(data) {
     items.push({
       skuId,
       name,
+      parentProductId,
       brand: v.brandName || v.brand || 'Instamart',
       pack: v.quantityDescription || '',
       price,

@@ -52,6 +52,41 @@ function getIstContext(overrideDate = null, overrideHour = null) {
   return { dateStr, hour, runId, now: now.getTime() };
 }
 
+function normalizeProductName(name) {
+  if (!name) return '';
+  let str = name.trim().toLowerCase();
+
+  // 1. Remove parenthetical descriptions, e.g. (XL, Sky Blue), (Pack of 2), (Freshly made), (Red or Green, ...)
+  str = str.replace(/\([^)]*\)/g, ' ');
+
+  // 2. Remove shoe size suffixes like "- 5 uk", "- uk 7", ", 8 uk", "uk 10", "5 uk", "- 6 uk", "uk 6"
+  str = str.replace(/[-\s,]+(?:uk\s*\d+|\d+\s*uk)\b/gi, ' ');
+
+  // 3. Remove standalone clothing size tags like "- xl", "- l", "size m", "xl", "xxl", "xxxl"
+  str = str.replace(/[-\s,]+(?:xs|s|m|l|xl|xxl|xxxl)\b/gi, ' ');
+
+  // 4. Remove wattage and piece count suffixes e.g. "9w,65k,1piece", "12w,65k,1 piece", "12 w"
+  str = str.replace(/\b\d+\s*w\b/gi, ' ');
+  str = str.replace(/\b\d+\s*piece(?:s)?\b/gi, ' ');
+  str = str.replace(/\b\d+k\b/gi, ' ');
+
+  // 5. Clean up multiple spaces, commas, dashes
+  str = str.replace(/[-_,\s]+/g, ' ').trim();
+
+  return str;
+}
+
+function getCanonicalItemKey(item) {
+  if (item.parentProductId) {
+    return `pid:${item.parentProductId}`;
+  }
+  const norm = normalizeProductName(item.name);
+  if (norm) {
+    return `name:${norm}`;
+  }
+  return (item.name || '').trim().toLowerCase() || String(item.skuId || '');
+}
+
 /**
  * Evaluates a list of fetched items against the minimum discount threshold.
  * 
@@ -60,10 +95,10 @@ function getIstContext(overrideDate = null, overrideHour = null) {
  *    all deals meeting the threshold are alerted to present the day's deals catalog.
  * 2. Subsequent runs (11 AM to 10 PM IST + 12 AM midnight):
  *    - An item is alerted ONLY if:
- *        a) It is a NEW deal (never seen before), OR
- *        b) It is a PRICE DROP (cheaper than last alerted price), OR
+ *        a) It is a NEW deal (never seen before today), OR
+ *        b) It is a meaningful PRICE DROP (cheaper + at least 5% higher discount), OR
  *        c) It RETURNED after being absent (was NOT present in the immediately preceding run).
- *    - If it was present in the immediately preceding run at the SAME price,
+ *    - If it was present in the immediately preceding run at the SAME price or different size variant,
  *      it is suppressed so users don't see repeated items every single hour.
  */
 function findAlertWorthyDeals(items, minDiscount = 70, campaignKey = 'default', options = {}) {
@@ -74,6 +109,8 @@ function findAlertWorthyDeals(items, minDiscount = 70, campaignKey = 'default', 
   // First run of the day: 10:00 AM IST or calendar day change
   const isFirstRunOfDay = (cache.lastDate !== dateStr) || (hour === 10 && cache.lastRunHour !== 10);
   const lastRunId = cache.lastRunId;
+
+  const seenInCurrentRun = new Map();
 
   for (const item of items) {
     let threshold = 70;
@@ -87,12 +124,36 @@ function findAlertWorthyDeals(items, minDiscount = 70, campaignKey = 'default', 
 
     if (item.discount < threshold) continue;
 
-    const itemKey = (item.name || '').trim().toLowerCase() || String(item.skuId || '');
+    const itemKey = getCanonicalItemKey(item);
     if (!itemKey) continue;
+
+    // Intra-run deduplication: if multiple variants/sizes of the same product exist in this batch
+    if (seenInCurrentRun.has(itemKey)) {
+      const existingAlert = seenInCurrentRun.get(itemKey);
+      if (item.price < existingAlert.price) {
+        // Update alert with the cheaper variant
+        existingAlert.price = item.price;
+        existingAlert.mrp = item.mrp;
+        existingAlert.discount = item.discount;
+        existingAlert.name = item.name;
+        existingAlert.searchLink = item.searchLink;
+        if (cache.items[itemKey]) {
+          cache.items[itemKey].price = item.price;
+          cache.items[itemKey].discount = item.discount;
+          cache.items[itemKey].lastAlertedPrice = item.price;
+          cache.items[itemKey].lastAlertedDiscount = item.discount;
+        }
+      }
+      continue;
+    }
 
     const prev = cache.items[itemKey];
 
-    const isPriceDrop = prev && (item.price < prev.lastAlertedPrice);
+    // Meaningful price improvement: price lower AND at least 5% higher discount, or same item with genuine price drop
+    const prevDisc = prev ? (prev.lastAlertedDiscount || prev.discount) : 0;
+    const isPriceDrop = prev && (
+      (item.price < prev.lastAlertedPrice && item.discount >= (prevDisc + 5))
+    );
     const wasInPreviousRun = prev && Boolean(lastRunId) && (prev.lastSeenRunId === lastRunId);
     const alreadyAlertedToday = prev && (prev.lastAlertedDate === dateStr);
 
@@ -108,7 +169,7 @@ function findAlertWorthyDeals(items, minDiscount = 70, campaignKey = 'default', 
       shouldAlert = true;
       alertType = 'NEW_DEAL';
     } else if (isPriceDrop) {
-      // Price dropped lower than last alerted price today
+      // Price dropped significantly lower than last alerted price today
       shouldAlert = true;
       alertType = 'PRICE_DROP';
     } else if (lastRunId && !wasInPreviousRun) {
@@ -121,7 +182,7 @@ function findAlertWorthyDeals(items, minDiscount = 70, campaignKey = 'default', 
     }
 
     if (shouldAlert) {
-      alertList.push({
+      const alertObj = {
         ...item,
         alertType,
         prevPrice: prev ? prev.lastAlertedPrice : null,
@@ -129,15 +190,19 @@ function findAlertWorthyDeals(items, minDiscount = 70, campaignKey = 'default', 
         campaignKey,
         dealType: item.dealType || campaignKey,
         searchQuery: item.searchQuery || ''
-      });
+      };
+      alertList.push(alertObj);
+      seenInCurrentRun.set(itemKey, alertObj);
 
       cache.items[itemKey] = {
         name: item.name,
         skuId: item.skuId || null,
+        parentProductId: item.parentProductId || null,
         price: item.price,
         mrp: item.mrp,
         discount: item.discount,
         lastAlertedPrice: item.price,
+        lastAlertedDiscount: item.discount,
         lastAlertedDate: dateStr,
         lastAlertedHour: hour,
         lastSeenRunId: runId,
@@ -146,6 +211,7 @@ function findAlertWorthyDeals(items, minDiscount = 70, campaignKey = 'default', 
       };
     } else {
       // Keep tracking presence in cache without triggering Telegram alert
+      seenInCurrentRun.set(itemKey, { price: item.price });
       cache.items[itemKey].lastSeenRunId = runId;
       cache.items[itemKey].price = item.price;
       cache.items[itemKey].discount = item.discount;
