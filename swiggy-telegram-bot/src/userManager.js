@@ -35,9 +35,9 @@ function getUser(chatId, defaultConfig = {}) {
     chatId: String(chatId),
     pincode: null,
     area: null,
-    storeId: defaultConfig.sid || '1400216',
-    primaryStoreId: defaultConfig.pid || '1400216',
-    secondaryStoreId: defaultConfig.secid || '1231805',
+    storeId: defaultConfig.sid || '',
+    primaryStoreId: defaultConfig.pid || '',
+    secondaryStoreId: defaultConfig.secid || '',
     minDiscount: defaultConfig.minDiscount || 30
   };
 }

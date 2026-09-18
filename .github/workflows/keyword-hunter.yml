@@ -50,9 +50,9 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          SWIGGY_STORE_ID: ${{ secrets.SWIGGY_STORE_ID || '1400216' }}
-          SWIGGY_PRIMARY_STORE_ID: ${{ secrets.SWIGGY_PRIMARY_STORE_ID || '1400216' }}
-          SWIGGY_SECONDARY_STORE_ID: ${{ secrets.SWIGGY_SECONDARY_STORE_ID || '1231805' }}
+          SWIGGY_STORE_ID: ${{ secrets.SWIGGY_STORE_ID }}
+          SWIGGY_PRIMARY_STORE_ID: ${{ secrets.SWIGGY_PRIMARY_STORE_ID }}
+          SWIGGY_SECONDARY_STORE_ID: ${{ secrets.SWIGGY_SECONDARY_STORE_ID }}
           SWIGGY_COOKIE: ${{ secrets.SWIGGY_COOKIE }}
           USE_BROWSER: 'false'
           SKIP_SYNC: ${{ inputs.skip_sync }}

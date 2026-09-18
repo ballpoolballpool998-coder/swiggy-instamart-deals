@@ -108,7 +108,7 @@ In your GitHub repository, navigate to **Settings** → **Secrets and variables*
 2. Click on **any category** (e.g. *Atta, Rice & Dal* or *Dairy, Bread & Eggs*).
 3. Check your browser address bar URL. It will look like this:
    ```
-   https://www.swiggy.com/instamart/category-listing?storeId=1400216&primaryStoreId=1400216&secondaryStoreId=1231805...
+   https://www.swiggy.com/instamart/category-listing?storeId=<your_store_id>&primaryStoreId=<your_primary_store_id>&secondaryStoreId=<optional_secondary_store_id>...
    ```
 4. Extract the IDs directly from the URL:
    - `storeId` is your **`SWIGGY_STORE_ID`**.

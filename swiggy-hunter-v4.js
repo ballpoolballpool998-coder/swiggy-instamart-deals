@@ -2209,44 +2209,112 @@ javascript:(async () => {
     return CFG.buildVersion;
   }
 
-  function detectStoreIds() {
-    const ids = new Set();
-    try {
-      performance.getEntries().forEach((e) => {
-        const u = e.name;
-        if (u.includes('storeId=')) {
-          const m = u.match(/storeId=(\d+)/);
-          if (m) ids.add(m[1]);
-          const p = new URLSearchParams(u.split('?')[1]);
-          if (p.get('primaryStoreId')) ids.add(p.get('primaryStoreId'));
-          if (p.get('secondaryStoreId')) ids.add(p.get('secondaryStoreId'));
-        }
-      });
-    } catch (e) {}
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        const v = localStorage.getItem(k);
-        if (typeof v === 'string') {
-          const m = v.match(/"(?:storeId|primaryStoreId)":\s*"?(\d+)"?/);
-          if (m && m[1].length > 4) ids.add(m[1]);
-        }
-      }
-    } catch (e) {}
+  function detectStoreIds(allowPrompt = false) {
+    let pid = null;
+    let secid = null;
 
-    let arr = Array.from(ids).filter((id) => id.length > 4);
-    if (arr.length === 0) {
-      const manual = prompt('Could not auto-detect store ID. Paste your storeId (from Network tab):', '');
-      if (manual) {
-        arr = manual.split(',').map((s) => s.trim()).filter(Boolean);
+    function extractFromStr(str) {
+      if (!str || typeof str !== 'string') return;
+      try {
+        const q = str.includes('?') ? str.split('?')[1] : (str.includes('=') ? str : '');
+        if (q) {
+          const p = new URLSearchParams(q);
+          const pPid = p.get('primaryStoreId') || p.get('primary_store_id') || p.get('storeId') || p.get('store_id');
+          const pSec = p.get('secondaryStoreId') || p.get('secondary_store_id');
+          if (pPid && !pid && /^\d{4,}$/.test(pPid)) pid = pPid;
+          if (pSec && !secid && /^\d{4,}$/.test(pSec)) secid = pSec;
+        }
+      } catch (e) {}
+
+      if (!pid) {
+        const mPid = str.match(/(?:"primaryStoreId"|"primary_store_id"|"storeId"|"store_id")\s*[:=]\s*"?(\d{4,})"?/i);
+        if (mPid) pid = mPid[1];
+      }
+      if (!secid) {
+        const mSec = str.match(/(?:"secondaryStoreId"|"secondary_store_id")\s*[:=]\s*"?(\d{4,})"?/i);
+        if (mSec) secid = mSec[1];
       }
     }
 
-    if (!arr.length) return null;
+    // 1. Current Window Location (URL bar query params and hash)
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        extractFromStr(window.location.search);
+        extractFromStr(window.location.hash);
+        extractFromStr(window.location.href);
+      }
+    } catch (e) {}
+
+    // 2. Performance Entries (inspected in reverse order for latest active dark store)
+    try {
+      if (typeof performance !== 'undefined' && performance.getEntries) {
+        const entries = performance.getEntries();
+        for (let i = entries.length - 1; i >= 0; i--) {
+          if (pid && secid) break;
+          const u = entries[i]?.name;
+          if (u && (u.includes('storeId') || u.includes('store_id') || u.includes('primaryStoreId') || u.includes('secondaryStoreId') || u.includes('instamart'))) {
+            extractFromStr(u);
+          }
+        }
+      }
+    } catch (e) {}
+
+    // 3. Window Globals / State
+    try {
+      ['__INITIAL_STATE__', '___INITIAL_STATE__', '__SWIGGY_GLOBAL__', '__PRELOADED_STATE__'].forEach((k) => {
+        if (pid && secid) return;
+        try {
+          const state = window[k];
+          if (state) extractFromStr(typeof state === 'string' ? state : JSON.stringify(state));
+        } catch (e) {}
+      });
+    } catch (e) {}
+
+    // 4. LocalStorage & SessionStorage
+    try {
+      ['localStorage', 'sessionStorage'].forEach((storeName) => {
+        if (pid && secid) return;
+        try {
+          const store = window[storeName];
+          if (store && store.length) {
+            for (let i = 0; i < store.length; i++) {
+              if (pid && secid) break;
+              const k = store.key(i);
+              const v = store.getItem(k);
+              extractFromStr(v);
+            }
+          }
+        } catch (e) {}
+      });
+    } catch (e) {}
+
+    // 5. Cookies
+    try {
+      if (typeof document !== 'undefined' && document.cookie) {
+        extractFromStr(document.cookie);
+      }
+    } catch (e) {}
+
+    // 6. Optional interactive prompt only when scouting is triggered and detection completely failed
+    if (!pid && allowPrompt) {
+      try {
+        const manual = prompt('Could not auto-detect store ID. Paste your storeId (or storeId,secondaryStoreId):', '');
+        if (manual) {
+          extractFromStr(manual);
+          if (!pid) {
+            const parts = manual.split(',').map((s) => s.trim()).filter((s) => /^\d{4,}$/.test(s));
+            if (parts.length > 0) pid = parts[0];
+            if (parts.length > 1) secid = parts[1];
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (!pid) return null;
     return {
-      sid: arr[0],
-      pid: arr[0],
-      secid: arr[1] || ''
+      sid: pid,
+      pid: pid,
+      secid: secid || ''
     };
   }
 
@@ -2665,6 +2733,13 @@ javascript:(async () => {
           <span class="ih4-badge">Aisle Selector</span>
         </div>
         <div class="ih4-sub">Choose a category and cherry-pick subcategories to scout Page 1 top deals.</div>
+        <div id="ih4-store-pod-badge" style="margin-top: 8px; font-size: 11.5px; padding: 5px 10px; border-radius: 6px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;" title="Click to refresh or edit store ID">
+          <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <span id="ih4-store-dot" style="width: 7px; height: 7px; border-radius: 50%; background: #16a34a; flex-shrink: 0;"></span>
+            <span id="ih4-store-pod-text">Detecting store pod…</span>
+          </div>
+          <span style="font-size: 11px; color: #64748b; margin-left: 6px; flex-shrink: 0;">↻</span>
+        </div>
         <button id="ih4-close" title="Close">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
@@ -2708,6 +2783,38 @@ javascript:(async () => {
   const openResultsLink = root.querySelector('#ih4-open-results-link');
   const secTabs = root.querySelectorAll('.ih4-sec-tab');
   const searchInput = root.querySelector('#ih4-search-input');
+  const storeBadgeEl = root.querySelector('#ih4-store-pod-badge');
+  const storeTextEl = root.querySelector('#ih4-store-pod-text');
+  const storeDotEl = root.querySelector('#ih4-store-dot');
+
+  let activeStoreIds = null;
+
+  function updateStorePodDisplay(storeIds) {
+    if (!storeTextEl || !storeBadgeEl) return;
+    if (storeIds && storeIds.sid) {
+      activeStoreIds = storeIds;
+      storeBadgeEl.style.background = '#f0fdf4';
+      storeBadgeEl.style.color = '#166534';
+      storeBadgeEl.style.borderColor = '#bbf7d0';
+      if (storeDotEl) storeDotEl.style.background = '#16a34a';
+      const secText = storeIds.secid ? ` <span style="color:#64748b;font-weight:normal;">(Sec: ${storeIds.secid})</span>` : '';
+      storeTextEl.innerHTML = `🏪 Store Pod: <b>${storeIds.sid}</b>${secText}`;
+    } else {
+      activeStoreIds = null;
+      storeBadgeEl.style.background = '#fffbeb';
+      storeBadgeEl.style.color = '#92400e';
+      storeBadgeEl.style.borderColor = '#fde68a';
+      if (storeDotEl) storeDotEl.style.background = '#f59e0b';
+      storeTextEl.innerHTML = `⚠️ Store not detected. Click any aisle or tap ↻ to set`;
+    }
+  }
+
+  if (storeBadgeEl) {
+    storeBadgeEl.addEventListener('click', () => {
+      const refreshed = detectStoreIds(true);
+      updateStorePodDisplay(refreshed);
+    });
+  }
 
   fab.addEventListener('click', () => panel.classList.toggle('open'));
   root.querySelector('#ih4-close').addEventListener('click', () => panel.classList.remove('open'));
@@ -3411,11 +3518,13 @@ javascript:(async () => {
 
     if (!selectedCat || selectedSubs.size === 0) return;
 
-    const storeIds = detectStoreIds();
+    const storeIds = detectStoreIds(true) || activeStoreIds;
     if (!storeIds) {
-      statusEl.textContent = 'Could not detect store ID. Please navigate to an Instamart page first.';
+      statusEl.textContent = 'Could not detect store ID. Please navigate to an Instamart page or click ↻ on the store pod above.';
+      updateStorePodDisplay(null);
       return;
     }
+    updateStorePodDisplay(storeIds);
 
     const catKey = selectedCat;
     const catObj = CFG.cats[catKey];
@@ -3563,4 +3672,24 @@ javascript:(async () => {
   });
 
   panel.classList.add('open');
+
+  // Auto-detect store IDs immediately when sidebar loads
+  const initialStoreIds = detectStoreIds(false);
+  updateStorePodDisplay(initialStoreIds);
+
+  // Passive background re-check if not detected yet (e.g. Swiggy API call still pending)
+  if (!initialStoreIds) {
+    const checkTimer = setInterval(() => {
+      if (activeStoreIds) {
+        clearInterval(checkTimer);
+        return;
+      }
+      const rechecked = detectStoreIds(false);
+      if (rechecked) {
+        updateStorePodDisplay(rechecked);
+        clearInterval(checkTimer);
+      }
+    }, 1000);
+    setTimeout(() => clearInterval(checkTimer), 10000);
+  }
 })();

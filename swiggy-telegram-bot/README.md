@@ -35,7 +35,7 @@ Create `.env` based on `.env.example`:
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
 MIN_DISCOUNT_PERCENT=70
-SWIGGY_STORE_ID=1400216
-SWIGGY_PRIMARY_STORE_ID=1400216
-SWIGGY_SECONDARY_STORE_ID=1231805
+SWIGGY_STORE_ID=your_store_id_here
+SWIGGY_PRIMARY_STORE_ID=your_store_id_here
+SWIGGY_SECONDARY_STORE_ID=your_secondary_store_id_or_blank
 ```
